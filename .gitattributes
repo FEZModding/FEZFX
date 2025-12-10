@@ -1,0 +1,26 @@
+# Normalize EOL for text files
+* text=auto
+
+# Normalized files
+.gitignore      text
+.gitattributes  text
+*.md            text diff=markdown
+
+# Linux scripts
+*.bash      text eol=lf
+*.fish      text eol=lf
+*.sh        text eol=lf
+*.zsh       text eol=lf
+
+# Windows scripts
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# DirectX Effects format
+*.fx        text eol=crlf
+
+# Exclude files
+.gitattributes    export-ignore
+.gitignore        export-ignore
+.gitkeep          export-ignore
