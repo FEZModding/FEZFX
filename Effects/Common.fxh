@@ -17,6 +17,6 @@ static const float PI = 3.141593;
 
 static const float TAU = 2.0 * PI;
 
-static const float ALPHA_THRESHOLD = 0.003906;
+static const float ALPHA_THRESHOLD = 0.00390625;
 
 #endif
