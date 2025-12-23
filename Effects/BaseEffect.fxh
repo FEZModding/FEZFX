@@ -34,7 +34,7 @@ static const float E = 2.71828183;
 
 static const float LOG2E = 1.44269502;
 
-static const float ALPHA_THRESHOLD = 0.00390625;
+static const float ALPHA_THRESHOLD = 1.0 / 256.0;
 
 static const float4 WHITE = RGBA(0xFFFFFFFF);
 
@@ -65,6 +65,13 @@ float ApplyExponentialSquaredFog(float distance, float density)
 //------------------------------------------------------------------------------
 // MATRIX SEMANTICS (XNA ROW-MAJOR CONVENTION)
 //------------------------------------------------------------------------------
+
+static const float4x4 MATRIX_IDENTITY = float4x4(
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+);
 
 float4x4 Matrices_WorldViewProjection;
 
@@ -147,9 +154,9 @@ float2 TexelOffset;
 
 float Time;
 
-float BaseAmbient;
+float3 BaseAmbient;
 
-float Eye;
+float3 Eye;
 
 float3 DiffuseLight;
 

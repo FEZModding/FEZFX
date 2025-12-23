@@ -47,15 +47,17 @@
 
 # Batch 5
 
-- [ ] ProjectedNodeEffect
-- [ ] HwTrixelParticleEffect
-- [ ] FoamEffect
-- [ ] CubemappedEffect
-- [ ] GlitchyPostEffect
-- [ ] HwGlitchyPostEffect
-- [ ] DefaultEffect_LitTextured
-- [ ] HwInstancedMapEffect
-- [ ] DefaultEffect_LitTexturedVertexColored
+- [x] ProjectedNodeEffect (World map nodes)
+- [x] HwTrixelParticleEffect (Particle system, SM3 version)
+- [x] FoamEffect (Water foam)
+- [x] CubemappedEffect (Glitchy despawners/respawners)
+- [x] GlitchyPostEffect (NES-style screen glitches, SM2 version)
+- [x] HwGlitchyPostEffect (NES-style screen glitches, SM3 version)
+- [x] DefaultEffect_LitTextured (Mostly cubes, anticubes and maps)
+- [x] HwInstancedMapEffect (World map links and icons, SM3 version)
+- [x] DefaultEffect_LitTexturedVertexColored (Unused)
+- [x] InstancedMapEffect (World map links and icons, SM2 version)
+- [x] TrixelParticleEffect (Particle system, SM2 version)
 
 # The Big Ones
 
@@ -63,12 +65,10 @@
 - [ ] GomezEffect
 - [ ] PlaneParticleEffect
 - [ ] HwPlaneParticleEffect
-- [ ] TrixelParticleEffect
 - [ ] HorizontalTrailsEffect
 - [ ] StaticPlaneEffect
 - [ ] AnimatedPlaneEffect
 - [ ] HwInstancedDotEffect
-- [ ] InstancedMapEffect
 - [ ] HwInstancedArtObjectEffect
 - [ ] InstancedDotEffect
 - [ ] HwInstancedStaticPlaneEffect
