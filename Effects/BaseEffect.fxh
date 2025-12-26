@@ -62,6 +62,20 @@ float ApplyExponentialSquaredFog(float distance, float density)
     return 1.0 - (1.0 / expFog);
 }
 
+float ApplyFog(float distance, float density)
+{
+    if (Fog_Type == FOG_TYPE_EXP_SQR)
+    {
+        return ApplyExponentialSquaredFog(distance, density);
+    }
+    else if (Fog_Type == FOG_TYPE_NONE)
+    {
+        return 0.0;
+    }
+    
+    return 0.0;
+}
+
 //------------------------------------------------------------------------------
 // MATRIX SEMANTICS (XNA ROW-MAJOR CONVENTION)
 //------------------------------------------------------------------------------
@@ -174,7 +188,12 @@ float4 ApplyTexelOffset(float4 position, float2 offset)
     return float4(position.xy + (offset * position.w), position.zw);
 }
 
-float3 CalculateLighting(float3 normal, float brightness )
+float4 ApplyEyeParallax(float4 position)
+{
+    return position + float4(dot(position.xyz - LevelCenter, Eye) * EyeSign, 0);
+}
+
+float3 CalculateLighting(float3 normal, float brightness)
 {
     float3 ambient = saturate(brightness + BaseAmbient);
     float3 invAmbient = 1.0 - BaseAmbient;
@@ -200,6 +219,95 @@ float ApplySpecular(float3 normal)
     float3 eyeDir = Eye - float3(0.0, 0.25, 0.0);
     float specular = dot(eyeDir, normal);
     return saturate(pow(specular, 8)) * 0.5;
+}
+
+float ApplySpecular2(float3 normal)
+{
+    float3 eyeDir = Eye - float3(0.0, 0.25, 0.0);
+    float specular = dot(eyeDir, normal);
+    return saturate(pow(specular, 8));
+}
+
+//------------------------------------------------------------------------------
+// UTILITY FUNCTIONS
+//------------------------------------------------------------------------------
+
+float4x4 CreateTransform(float3 position, float3x3 rotation)
+{
+    return float4x4(
+        rotation[0], 0,
+        rotation[1], 0,
+        rotation[2], 0,
+        position, 1
+    );
+}
+
+float4x4 CreateTransform(float3 position, float3x3 rotation, float3 scale)
+{
+    return float4x4(
+        rotation[0] * scale.x, 0,
+        rotation[1] * scale.y, 0,
+        rotation[2] * scale.z, 0,
+        position, 1
+    );
+}
+
+float3x3 PhiToMatrix(float phi)
+{
+    // Y-up, left-handed
+    float s, c;
+    sincos(phi, s, c);
+    return float3x3(
+        c,  0,  -s,
+        0,  1,  0,
+        s,  0,  c
+    );
+}
+
+float3x3 QuaternionToMatrix(float4 quaternion)
+{
+    float xx = quaternion.x * quaternion.x;
+    float yy = quaternion.y * quaternion.y;
+    float zz = quaternion.z * quaternion.z;
+    float xy = quaternion.x * quaternion.y;
+    float xz = quaternion.x * quaternion.z;
+    float xw = quaternion.x * quaternion.w;
+    float yz = quaternion.y * quaternion.z;
+    float yw = quaternion.y * quaternion.w;
+    float zw = quaternion.z * quaternion.w;
+
+    return float3x3(
+        1 - 2 * (yy + zz), 2 * (xy + zw), 2 * (xz - yw),
+        2 * (xy - zw), 1 - 2 * (xx + zz), 2 * (yz + xw),
+        2 * (xz + yw), 2 * (yz - xw), 1 - 2 * (xx + yy)
+    );
+}
+
+float GetFlag(float flags, float bit)
+{
+    float flagValue = floor(flags);
+    float divisor = bit * 0.5;
+    float divided = flagValue / divisor;
+    float fraction = frac(divided);
+    return float(frac(fraction * 0.5) >= 0.5);
+}
+
+float3 HSV_RGB(float hue, float saturation, float value)
+{
+    float h = hue * 6.0;
+    float f = frac(h);
+    int i = (int)floor(h) % 6;
+
+    float p = value * (1.0 - saturation);
+    float q = value * (1.0 - f * saturation);
+    float t = value * (1.0 - (1.0 - f) * saturation);
+
+    if (i == 0)         return float3(value, t, p);
+    else if (i == 1)    return float3(q, value, p);
+    else if (i == 2)    return float3(p, value, t);
+    else if (i == 3)    return float3(p, q, value);
+    else if (i == 4)    return float3(t, p, value);
+    else                return float3(value, p, q);
 }
 
 #endif // BASE_EFFECT_FXH

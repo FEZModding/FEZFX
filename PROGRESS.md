@@ -16,7 +16,7 @@
 - [x] ZoomInEffect (Zooming in when the Gomez room appears)
 - [x] BasicPostEffect (Simple color post-processing)
 - [x] BurnInPostEffect (Burn-in CRT effect in `CMY` levels)
-- [x] MatrixEffect (Matrix-like effect in `Elders` sequence)
+- [x] MatrixEffect (Matrix-like effect in `ELDERS` sequence)
 - [x] FarAwayEffect (Transition from far-away thumbnail to actual level)
 - [x] FastBlurEffect (Blurs the background in opened inventory)
 - [x] PointsFromLinesEffect (Polka-dot background in `VILLAGEVILLE_3D_END_32` or `VILLAGEVILLE_3D_END_64`)
@@ -61,19 +61,19 @@
 
 # The Big Ones
 
-- [ ] InstancedAnimatedPlaneEffect
-- [ ] GomezEffect
-- [ ] PlaneParticleEffect
-- [ ] HwPlaneParticleEffect
-- [ ] HorizontalTrailsEffect
-- [ ] StaticPlaneEffect
-- [ ] AnimatedPlaneEffect
-- [ ] HwInstancedDotEffect
-- [ ] HwInstancedArtObjectEffect
-- [ ] InstancedDotEffect
-- [ ] HwInstancedStaticPlaneEffect
-- [ ] HwInstancedAnimatedPlaneEffect
-- [ ] HwTrileEffect
-- [ ] TrileEffect
-- [ ] InstancedArtObjectEffect
-- [ ] InstancedStaticPlaneEffect
+- [x] InstancedAnimatedPlaneEffect (Background Planes, animated, SM2 version)
+- [x] GomezEffect (Player sprite)
+- [x] PlaneParticleEffect (Particle system, SM2 version)
+- [x] HwPlaneParticleEffect (Particle system, SM3 version)
+- [x] HorizontalTrailsEffect (Horizontal stars effect in `ELDERS` sequence)
+- [x] StaticPlaneEffect (Unused, without class)
+- [x] AnimatedPlaneEffect (Animated NPCs)
+- [x] HwInstancedDotEffect (Plenty of Dots sequence in `VILLAGEVILLE_3D_END_64`, SM3 version)
+- [x] HwInstancedArtObjectEffect (Batched Art Objects rendering, SM2 version)
+- [x] InstancedDotEffect (Plenty of Dots sequence in `VILLAGEVILLE_3D_END_64`, SM2 version)
+- [x] HwInstancedStaticPlaneEffect (Background Planes, static, SM3 version)
+- [x] HwInstancedAnimatedPlaneEffect (Background Planes, animated, SM3 version)
+- [x] HwTrileEffect (Batched trile rendering, SM3 version)
+- [x] TrileEffect (Batched trile rendering, SM2 version)
+- [x] InstancedArtObjectEffect (Batched Art Objects rendering, SM2 version)
+- [x] InstancedStaticPlaneEffect (Background Planes, static, SM2 version)
