@@ -9,11 +9,7 @@ float IgnoreShading;    // boolean
 float IgnoreFog;        // boolean
 float SewerHax;         // boolean
 
-texture AnimatedTexture;
-sampler2D AnimatedSampler = sampler_state
-{
-    Texture = <AnimatedTexture>;
-};
+DECLARE_TEXTURE(AnimatedTexture);
 
 struct VS_INPUT
 {
@@ -48,7 +44,7 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(AnimatedSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(AnimatedTexture, input.TexCoord);
     
     float alpha = texColor.a * Material_Opacity;
     if (AlphaIsEmissive)
@@ -84,7 +80,7 @@ float4 PS_Pre(VS_OUTPUT input) : COLOR0
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(AnimatedSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(AnimatedTexture, input.TexCoord);
     float alpha = texColor.a * Material_Opacity;
     if (AlphaIsEmissive)
     {

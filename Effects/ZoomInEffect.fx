@@ -1,18 +1,9 @@
 // ZoomInEffect
 // 41C180564DAD1048840561B6365431F3A6B19468E6A0549F8D0A667B8611FBE4
 
-#include "Common.fxh"
+#include "BaseEffect.fxh"
 
-float3 Material_Diffuse;
-float Material_Opacity;
-float3x3 Matrices_Texture;
-float2 TexelOffset;
-texture BaseTexture;
-
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 struct VS_INPUT
 {
@@ -29,23 +20,23 @@ struct VS_OUTPUT
 VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
-    
-    float4 offset = float4(TexelOffset * input.Position.w, 0, 0);
-    output.Position = input.Position + offset;
-    
-    float3 texCoord = float3(input.TexCoord, 1.0);
-    output.TexCoord = mul(texCoord, Matrices_Texture).xy;
-    
+
+    output.Position = ApplyTexelOffset(input.Position);
+    output.TexCoord = TransformTexCoord(input.TexCoord);
+
     return output;
 }
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, saturate(input.TexCoord)); // clamps UV in [0, 1] range
-    float alphaTest = texColor.a * Material_Opacity;
-    clip(alphaTest - ALPHA_THRESHOLD);
+    float2 texCoord = saturate(input.TexCoord);     // Clamps in [0, 1] range
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, texCoord);
 
-    return float4(texColor.rgb * Material_Diffuse, alphaTest);
+    float3 color = texColor.rgb * Material_Diffuse;
+    float alpha = texColor.a * Material_Opacity;
+    ApplyAlphaTest(alpha);
+
+    return float4(color, alpha);
 }
 
 technique TSM2

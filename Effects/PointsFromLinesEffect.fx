@@ -1,9 +1,7 @@
 // PointsFromLinesEffect
 // 9D7C1C7A57A5F76C011AA57BE9E305BEE55943580BB06F0CBCADF866DA6A843E
 
-float4x4 Matrices_WorldViewProjection;
-float2 TexelOffset;
-float Material_Opacity;
+#include "BaseEffect.fxh"
 
 struct VS_INPUT
 {
@@ -21,8 +19,8 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    output.Position = mul(input.Position, Matrices_WorldViewProjection);
-    output.Position.x += sign(input.Color.a) * -TexelOffset.x * 4.0;
+    output.Position = TransformPositionToClip(input.Position);
+    output.Position.x -= sign(input.Color.a) * TexelOffset.x * 4.0;
     output.Color = float4(input.Color.rgb, Material_Opacity);
 
     return output;

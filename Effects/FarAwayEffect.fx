@@ -1,19 +1,11 @@
 // FarAwayEffect
 // 6BD67ADFAF58B798C67FAA2C6112F91097CD1877399BE2A3C775FF59921128E9
 
-#include "Common.fxh"
+#include "BaseEffect.fxh"
 
-float3 Material_Diffuse;
-float Material_Opacity;
 float ActualOpacity;
-float4x4 Matrices_WorldViewProjection;
-float2 TexelOffset;
-texture BaseTexture;
 
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 struct VS_INPUT
 {
@@ -31,9 +23,8 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    float4 worldPos = mul(input.Position, Matrices_WorldViewProjection);
-    output.Position.xy = (TexelOffset * worldPos.w) + worldPos.xy;
-    output.Position.zw = worldPos.zw;
+    float4 worldViewPos = TransformPositionToClip(input.Position);
+    output.Position = ApplyTexelOffset(worldViewPos);
     output.TexCoord = input.TexCoord;
 
     return output;
@@ -41,15 +32,15 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
     
-    float alphaTest = texColor.a * ActualOpacity;
-    clip(alphaTest - ALPHA_THRESHOLD);
+    float alpha = texColor.a * Material_Opacity;
+    ApplyAlphaTest(alpha);
 
     float3 diff = texColor.rgb - Material_Diffuse;
     float3 color = Material_Diffuse + Material_Opacity * diff;
     
-    return float4(color, alphaTest);
+    return float4(color, alpha);
 }
 
 technique TSM2

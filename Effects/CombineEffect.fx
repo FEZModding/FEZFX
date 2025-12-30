@@ -1,22 +1,14 @@
 // CombineEffect
 // EC7FD1032031BC9352447B5964B635E282D7E9B94CEDA61070B909B99C62C688
 
-float4x4 LeftFilter;
-float4x4 RightFilter;
+#include "BaseEffect.fxh"
+
+float3x3 LeftFilter;
+float3x3 RightFilter;
 float RedGamma;
-float2 TexelOffset;
-texture LeftTexture;
-texture RightTexture;
 
-sampler2D LeftSampler = sampler_state
-{
-    Texture = <LeftTexture>;
-};
-
-sampler2D RightSampler = sampler_state
-{
-    Texture = <RightTexture>;
-};
+DECLARE_TEXTURE(LeftTexture);
+DECLARE_TEXTURE(RightTexture);
 
 struct VS_INPUT
 {
@@ -34,8 +26,7 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    output.Position.xy = (TexelOffset * input.Position.w) + input.Position.xy;
-    output.Position.zw = input.Position.zw;
+    output.Position = ApplyTexelOffset(input.Position);
     output.TexCoord = input.TexCoord;
 
     return output;
@@ -43,11 +34,11 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 leftColor = tex2D(LeftSampler, input.TexCoord);
-    float4 rightColor = tex2D(RightSampler, input.TexCoord);
+    float4 leftColor = SAMPLE_TEXTURE(LeftTexture, input.TexCoord);
+    float4 rightColor = SAMPLE_TEXTURE(RightTexture, input.TexCoord);
 
-    float3 leftFiltered = mul((float3x3)LeftFilter, leftColor.rgb);
-    float3 rightFiltered = mul((float3x3)RightFilter, rightColor.rgb);
+    float3 leftFiltered = mul(LeftFilter, leftColor.rgb);
+    float3 rightFiltered = mul(RightFilter, rightColor.rgb);
 
     float3 combined = leftFiltered + rightFiltered;
     float redGammaCorrected = pow(abs(combined.r), 1.0 / RedGamma);

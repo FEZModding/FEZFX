@@ -6,27 +6,23 @@
 static const float2 VERTEX_SCALE = float2(3.0 / 80.0, 1.0 / 15.0);
 static const float TEXEL_SCALE = 0.0234378669;
 
-texture GlitchTexture;
-sampler2D GlitchSampler = sampler_state
-{
-    Texture = <GlitchTexture>;
-};
+DECLARE_TEXTURE(GlitchTexture);
 
 struct VS_INPUT
 {
     float4 Position : POSITION0;
     float2 TexCoord : TEXCOORD0;
-    float4 InstanceData0 : TEXCOORD2;   // position, uv scale
-    float4 InstanceData1 : TEXCOORD3;   // rgb swapping, alpha test
-    float4 InstanceData2 : TEXCOORD4;   // rgb inversion
-    float4 InstanceData3 : TEXCOORD5;   // uv offset, disabled
+    float4 InstanceData0 : TEXCOORD2;   // Position, UV scale
+    float4 InstanceData1 : TEXCOORD3;   // RGB swapping, Alpha test
+    float4 InstanceData2 : TEXCOORD4;   // RGB inversion
+    float4 InstanceData3 : TEXCOORD5;   // UV offset, Disabled
 };
 
 struct VS_OUTPUT
 {
     float2 TexCoord : TEXCOORD0;
-    float4 Flags1 : TEXCOORD1;    // rgb swapping, alpha test
-    float3 Flags2 : TEXCOORD2;    // rgb inversion
+    float4 Flags1 : TEXCOORD1;    // RGB swapping, Alpha test
+    float3 Flags2 : TEXCOORD2;    // RGB inversion
     float4 Position : POSITION0;
 };
 
@@ -53,7 +49,7 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(GlitchSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(GlitchTexture, input.TexCoord);
 
     float3 color = texColor.rgb;
     if (input.Flags1.x)

@@ -1,9 +1,9 @@
 // VignetteEffect
 // 0215FF82383DB0B69F57EDCD929FEDC5EBC1B0182736D4C4F30E9F12C3816F49
 
-float Material_Opacity;
+#include "BaseEffect.fxh"
+
 float SinceStarted;
-float2 TexelOffset;
 
 struct VS_INPUT
 {
@@ -33,10 +33,7 @@ float4 PS(VS_OUTPUT input) : COLOR0
     float horizontalPower = clamp(pow(abs(3.0 * SinceStarted), 30.0), 4.0, 1000000.0);
     float verticalPower = clamp(pow(abs(10.0 * SinceStarted), 15.0), 4.0, 1000000.0);
     
-    float2 offset = input.TexCoord - 0.5;
-    float2 offsetSq = offset * offset;
-    float2 falloff = 1.0 - (offsetSq * 0.6);
-    
+    float2 falloff = 1.0 - (pow(input.TexCoord - 0.5, 2) * 0.6);
     float vignetteX = pow(abs(falloff.x), horizontalPower);
     float vignetteY = pow(abs(falloff.y), verticalPower);
     float vignette = (vignetteX * vignetteY) - 1.0;

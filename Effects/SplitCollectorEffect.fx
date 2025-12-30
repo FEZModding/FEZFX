@@ -1,12 +1,9 @@
 // SplitCollectorEffect
 // 52B68E022A1F74CD272C86E9C5E13418C9FA76F29BA56F2D0B33A593FFFD1B0C
 
-float3 Material_Diffuse;
-float Material_Opacity;
+#include "BaseEffect.fxh"
+
 float VaryingOpacity;
-float4x4 Matrices_World;
-float4x4 Matrices_ViewProjection;
-float2 TexelOffset;
 float Offset;
 
 struct VS_INPUT
@@ -25,12 +22,11 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    float3 offsetDir = input.TexCoord.xyz * 2.0 - 1.0;
-    float4 worldPos = mul(input.Position, Matrices_World);
-    float4 offsetPos = float4(worldPos.xyz + Offset * offsetDir, worldPos.w);
+    float4 worldPos = TransformPositionToWorld(input.Position);
+    worldPos.xyz += Offset * (input.TexCoord.xyz * 2.0 - 1.0);
 
-    output.Position = mul(offsetPos, Matrices_ViewProjection);
-    output.Position.xy += TexelOffset * output.Position.w;
+    float4 worldViewPos = TransformWorldToClip(worldPos);
+    output.Position = ApplyTexelOffset(worldViewPos);
     output.TexCoord = input.TexCoord * float4(2, 2, 2, 1) + float4(-1, -1, -1, 0);
 
     return output;

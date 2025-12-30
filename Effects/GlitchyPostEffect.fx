@@ -8,11 +8,7 @@ static const float TEXEL_SCALE = 0.0234378669;
 
 float4x4 InstanceData[60];
 
-texture GlitchTexture;
-sampler2D GlitchSampler = sampler_state
-{
-    Texture = <GlitchTexture>;
-};
+DECLARE_TEXTURE(GlitchTexture);
 
 struct VS_INPUT
 {
@@ -24,8 +20,8 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float2 TexCoord : TEXCOORD0;
-    float4 Flags1 : TEXCOORD1;    // rgb swapping, alpha test
-    float3 Flags2 : TEXCOORD2;    // rgb inversion
+    float4 Flags1 : TEXCOORD1;    // RGB swapping, Alpha test
+    float3 Flags2 : TEXCOORD2;    // RGB inversion
     float4 Position : POSITION0;
 };
 
@@ -34,10 +30,10 @@ VS_OUTPUT VS(VS_INPUT input)
     VS_OUTPUT output;
 
     int index = trunc(input.InstanceIndex);
-    float4 InstanceData0 = InstanceData[index][0];   // position, uv scale
-    float4 InstanceData1 = InstanceData[index][1];   // rgb swapping, alpha test
-    float4 InstanceData2 = InstanceData[index][2];   // rgb inversion
-    float4 InstanceData3 = InstanceData[index][3];   // uv offset, disabled
+    float4 InstanceData0 = InstanceData[index][0];   // Position, UV scale
+    float4 InstanceData1 = InstanceData[index][1];   // RGB swapping, Alpha test
+    float4 InstanceData2 = InstanceData[index][2];   // RGB inversion
+    float4 InstanceData3 = InstanceData[index][3];   // UV offset, Disabled
 
     float3 position = input.Position;
     position.xy = position.xy * InstanceData0.zw + InstanceData0.xy;
@@ -58,7 +54,7 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(GlitchSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(GlitchTexture, input.TexCoord);
 
     float3 color = texColor.rgb;
     if (input.Flags1.x)

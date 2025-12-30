@@ -8,11 +8,7 @@ float AlphaIsEmissive;  // boolean
 float IgnoreFog;        // boolean
 float SewerHax;         // boolean
 
-texture BaseTexture;
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 struct VS_INPUT
 {
@@ -47,7 +43,7 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
 
     float brightness = 0.0;
     if (Fullbright)
@@ -73,7 +69,7 @@ float4 PS_Pre(VS_OUTPUT input) : COLOR0
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
 
     float3 color = texColor.rgb * Material_Diffuse;
     color = lerp(color, Fog_Color, input.FogFactor);

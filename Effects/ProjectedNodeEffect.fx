@@ -10,26 +10,22 @@ static const float3 GOLD_COLOR = RGB(0xFFBE24);
 float2 ViewportSize;
 float2 TextureSize;
 float PixelsPerTrixel;
-bool NoTexture;
-bool Complete;
+float NoTexture;        // boolean
+float Complete;         // boolean
 float3 CubeOffset;
 
-texture BaseTexture;
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 struct VS_INPUT
 {
     float4 Position : POSITION0;
-    float4 Normal : NORMAL0;
+    float3 Normal : NORMAL0;
 };
 
 struct VS_OUTPUT
 {
     float4 Position : POSITION0;
-    float4 Normal : TEXCOORD0;
+    float3 Normal : TEXCOORD0;
     float4 WorldViewPos : TEXCOORD1;
     float4 CubePos : TEXCOORD2;
 };
@@ -48,31 +44,26 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float3 normal = input.Normal.xyz;
     float invAmbient = 1.0 - BaseAmbient;
-    float normalDot = saturate(dot(normal, 1.0));
-    float lighting = normalDot * invAmbient + saturate(BaseAmbient);
+    float ndotl = saturate(dot(input.Normal, 1.0));
+    float lighting = ndotl * invAmbient + saturate(BaseAmbient);
 
     float faceLight = lighting;
-    if (normal.x < 0.01) // Negative X face
+    if (input.Normal.x < 0.01) // Negative X face
     {
-        float absX = abs(normal.x) * invAmbient;
-        faceLight = lighting - (absX * 0.2);
+        faceLight = lighting - (abs(input.Normal.x) * invAmbient * 0.2);
     }
-    if (normal.z >= -0.01) // Positive Z face
+    if (input.Normal.z >= -0.01) // Positive Z face
     {
-        float absZ = abs(normal.z) * invAmbient;
-        faceLight = lighting + (absZ * 0.6);
+        faceLight = lighting + (abs(input.Normal.z) * invAmbient * 0.6);
     }
-    if (normal.x >= -0.01) // Positive X face
+    if (input.Normal.x >= -0.01) // Positive X face
     {
-        float absX = abs(normal.x) * invAmbient;
-        faceLight = faceLight + (absX * 0.4);
+        faceLight = faceLight + (abs(input.Normal.x) * invAmbient * 0.4);
     }
-    if (normal.y < 0.01) // Negative Y face
+    if (input.Normal.y < 0.01) // Negative Y face
     {
-        float absY = abs(normal.y) * invAmbient;
-        faceLight = faceLight - (absY * 0.1);
+        faceLight = faceLight - (abs(input.Normal.y) * invAmbient * 0.1);
     }
     
     faceLight = saturate(faceLight);
@@ -93,7 +84,7 @@ float4 PS_Main(VS_OUTPUT input) : COLOR0
     texCoord = texCoord * 0.166667 + 0.5;
     texCoord += 0.5 / ViewportSize;
 
-    float3 color = tex2D(BaseSampler, texCoord).rgb;
+    float3 color = SAMPLE_TEXTURE(BaseTexture, texCoord).rgb;
     if (NoTexture)
     {
         color = DARK_COLOR;
@@ -109,7 +100,7 @@ float4 PS_Main(VS_OUTPUT input) : COLOR0
 
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
-    clip(Material_Opacity - 0.00999999978);
+    clip(Material_Opacity - 0.01);
     return float4(GRAY_COLOR, 1.0);
 }
 

@@ -5,6 +5,13 @@
 // MACROS
 //------------------------------------------------------------------------------
 
+#define DECLARE_TEXTURE(Name) \
+    texture2D Name; \
+    sampler Name##Sampler = sampler_state { Texture = (Name); }
+
+#define SAMPLE_TEXTURE(Name, texCoord) \
+    tex2D(Name##Sampler, texCoord)
+
 #define RGB(hex) float3( \
     ((hex >> 16) & 0xFF) / 255.0, \
     ((hex >> 8) & 0xFF) / 255.0, \
@@ -117,11 +124,6 @@ float4 TransformPositionToWorld(float4 position)
     return mul(position, Matrices_World);
 }
 
-float4 TransformPosition(float4 position, float4x4 transform)
-{
-    return mul(position, transform);
-}
-
 float2 TransformTexCoord(float2 texCoord)
 {
     return mul(float3(texCoord, 1.0), Matrices_Texture).xy;
@@ -232,12 +234,41 @@ float ApplySpecular2(float3 normal)
 // UTILITY FUNCTIONS
 //------------------------------------------------------------------------------
 
+float3x3 CreateTransform2D(float2 position, float2 scale)
+{
+    return float3x3(
+        scale.x, 0, 0,
+        0, scale.y, 0,
+        position, 1
+    );
+}
+
+float4x4 CreateTransform(float3 position)
+{
+    return float4x4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        position, 1
+    );
+}
+
 float4x4 CreateTransform(float3 position, float3x3 rotation)
 {
     return float4x4(
         rotation[0], 0,
         rotation[1], 0,
         rotation[2], 0,
+        position, 1
+    );
+}
+
+float4x4 CreateTransform(float3 position, float3 scale)
+{
+    return float4x4(
+        scale.x, 0, 0, 0,
+        0, scale.y, 0, 0,
+        0, 0, scale.z, 0,
         position, 1
     );
 }

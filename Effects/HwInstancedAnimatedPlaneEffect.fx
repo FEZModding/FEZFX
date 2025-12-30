@@ -8,11 +8,7 @@ float SewerHax;         // boolean
 float IgnoreShading;    // boolean
 float2 FrameScale;
 
-texture AnimatedTexture;
-sampler2D AnimatedSampler = sampler_state
-{
-    Texture = <AnimatedTexture>;
-};
+DECLARE_TEXTURE(AnimatedTexture);
 
 struct VS_INPUT
 {
@@ -91,7 +87,7 @@ float4 PS_Pre(VS_OUTPUT input) : COLOR0
         input.TexCoord.y = wrappedV * FrameScaleY + V_Offset;
     }
 
-    float4 texColor = tex2D(AnimatedSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(AnimatedTexture, input.TexCoord);
     float alpha = input.Color.a * texColor.a;
     ApplyAlphaTest(alpha);
 
@@ -110,7 +106,7 @@ float4 PS_Pre(VS_OUTPUT input) : COLOR0
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(AnimatedSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(AnimatedTexture, input.TexCoord);
     float alpha = texColor.a * input.Color.a;
     ApplyAlphaTest(alpha);
 

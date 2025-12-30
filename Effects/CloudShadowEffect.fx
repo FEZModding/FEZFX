@@ -1,24 +1,9 @@
 // CloudShadowEffect
 // 5AF26C88082387477D4B10A9D4F5FA041EDB38B04C365204CA62C4468258F8B4
 
-static const float3 WHITE = float3(1.0, 1.0, 1.0);
-static const float NORMAL_EPSILON = 0.01;
-static const float VERTICAL_BLEND = 0.6;
-static const float HORIZONTAL_BLEND = 0.3;
-static const float BRIGHT_MIX = 0.75;
+#include "BaseEffect.fxh"
 
-float Material_Opacity;
-float4x4 Matrices_WorldViewProjection;
-float3x3 Matrices_Texture;
-float2 TexelOffset;
-float3 DiffuseLight;
-float3 BaseAmbient;
-texture BaseTexture;
-
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 struct VS_INPUT
 {
@@ -38,12 +23,9 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
     
-    float4 worldPos = mul(input.Position, Matrices_WorldViewProjection);
-    output.Position.xy = (TexelOffset * worldPos.w) + worldPos.xy;
-    output.Position.zw = worldPos.zw;
-    
-    float3 texCoord = float3(input.TexCoord, 1.0);
-    output.TexCoord = mul(texCoord, Matrices_Texture).xy;
+    float4 worldViewPos = TransformPositionToClip(input.Position);
+    output.Position = ApplyTexelOffset(worldViewPos);
+    output.TexCoord = TransformTexCoord(input.TexCoord);
     output.Normal = input.Normal;
     
     return output;
@@ -51,7 +33,7 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Standard(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
     float3 color = 1.0 - (texColor.rrr * Material_Opacity);
     
     return float4(color, 1.0);
@@ -59,32 +41,26 @@ float4 PS_Standard(VS_OUTPUT input) : COLOR0
 
 float4 PS_Canopy(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
     
-    float3 ambientVariation = 1.0 - BaseAmbient;
-    float3 ambientClamped = clamp(BaseAmbient, 0.0, 1.0);
-    float normalDot = clamp(dot(input.Normal, float3(1.0, 1.0, 1.0)), 0.0, 1.0);
-    float3 directionalAmbient = (normalDot * ambientVariation) + ambientClamped;
+    float3 invAmbient = 1.0 - BaseAmbient;
+    float3 ambient = saturate(BaseAmbient);
+    float ndotl = saturate(dot(input.Normal, 1.0));
+    float3 lighting = ndotl * invAmbient + ambient;
     
-    float3 verticalLighting = abs(input.Normal.z) * ambientVariation.bgr;
-    verticalLighting = (verticalLighting * VERTICAL_BLEND) + directionalAmbient.bgr;
-    if (input.Normal.z + NORMAL_EPSILON >= 0.0)
-        verticalLighting = directionalAmbient.bgr;
+    // Back lighting for surfaces facing away
+    if (input.Normal.z < -0.01)
+        lighting = abs(input.Normal.z) * invAmbient * 0.6 + lighting;
     
-    float3 horizontalLighting = abs(input.Normal.x) * ambientVariation;
-    horizontalLighting = (horizontalLighting * HORIZONTAL_BLEND) + verticalLighting.bgr;
-    if (input.Normal.x + NORMAL_EPSILON < 0.0)
-        verticalLighting = horizontalLighting.bgr;
+    // Side lighting for surfaces facing left
+    if (input.Normal.x < -0.01)
+        lighting = abs(input.Normal.x) * invAmbient * 0.3 + lighting;
     
-    verticalLighting = clamp(verticalLighting, 0.0, 1.0);
-    float3 canopyColor = lerp(verticalLighting.bgr, WHITE, BRIGHT_MIX);
+    float3 canopyColor = lerp(saturate(lighting), 1.0, 0.75);
+    float3 lightingDelta = canopyColor * (DiffuseLight * 0.5) - (BaseAmbient * 0.5);
     
-    float3 halfDiffuse = 0.5 * DiffuseLight;
-    float3 halfAmbient = 0.5 * BaseAmbient;
-    float3 lightingDelta = (canopyColor.bgr * halfDiffuse.bgr) - halfAmbient.bgr;
-    
-    float shadowAttenuation = 1.0 - (texColor.r * Material_Opacity.x);
-    float3 color = (lightingDelta.bgr * shadowAttenuation) + halfAmbient;
+    float shadowAttenuation = 1.0 - texColor.r * Material_Opacity;
+    float3 color = lightingDelta * shadowAttenuation + (BaseAmbient * 0.5);
     
     return float4(color, 1.0);
 }

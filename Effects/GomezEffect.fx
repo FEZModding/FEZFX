@@ -16,11 +16,7 @@ float3 WhiteSwap;
 float3 YellowSwap;
 float3 GraySwap;
 
-texture AnimatedTexture;
-sampler2D AnimatedSampler = sampler_state
-{
-    Texture = <AnimatedTexture>;
-};
+DECLARE_TEXTURE(AnimatedTexture);
 
 struct VS_INPUT
 {
@@ -55,7 +51,7 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(AnimatedSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(AnimatedTexture, input.TexCoord);
 
     ApplyAlphaTest(texColor.a * Material_Opacity);
     if (NoMoreFez && input.HatOffset < 0)
@@ -73,7 +69,7 @@ float4 PS_Pre(VS_OUTPUT input) : COLOR0
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(AnimatedSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(AnimatedTexture, input.TexCoord);
 
     float3 color = texColor.rgb;
     float alpha = texColor.a * Material_Opacity;

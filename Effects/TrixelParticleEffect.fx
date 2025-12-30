@@ -5,11 +5,7 @@
 
 float4x4 InstanceData[60];
 
-texture BaseTexture;
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 struct VS_INPUT
 {
@@ -32,22 +28,16 @@ VS_OUTPUT VS(VS_INPUT input)
     VS_OUTPUT output;
 
     int index = trunc(input.InstanceIndex);
-    float4 Center = InstanceData[index][0];
-    float4 Size = InstanceData[index][1];
+    float3 Center = InstanceData[index][0].xyz;
+    float3 Size = InstanceData[index][1].xyz;
     float4 Color = InstanceData[index][2];
     float4 TextureMatrix = InstanceData[index][3];
 
     output.TexCoord = input.TexCoord * TextureMatrix.xy + TextureMatrix.zw;
     
-    float4x4 xform = float4x4(
-        Size.x, 0.0, 0.0, 0.0,
-        0.0, Size.y, 0.0, 0.0,
-        0.0, 0.0, Size.z, 0.0,
-        Center.x, Center.y, Center.z, 1.0
-    );
-
+    float4x4 xform = CreateTransform(Center, Size);
     float4 position = mul(input.Position, xform);
-    position.xyz += dot(position.xyz - LevelCenter, Eye) * EyeSign;
+    position = ApplyEyeParallax(position);
 
     float4 worldViewPos = TransformPositionToClip(position); 
     output.Position = ApplyTexelOffset(worldViewPos);
@@ -60,38 +50,22 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
-    float3 tint = saturate(input.Color.rgb - 1.0);
-    float3 ambient = saturate(tint.x + BaseAmbient);
-    float3 invAmbient = 1.0 - BaseAmbient;
-    float3 invDiffuse = tint * (1.0 - DiffuseLight);
+    float tint = saturate(input.Color.rgb - 1.0);
+    float3 color = CalculateLighting(input.Normal, tint.x);
 
-    // Front lighting
-    float normalDotLight = saturate(dot(input.Normal, 1.0));
-    float3 frontLighting = normalDotLight * invAmbient + ambient;
-
-    // Backface lighting
-    float3 backLighting = abs(input.Normal.z) * invAmbient * 0.6 + frontLighting;
-    float3 lighting = (input.Normal.z < -0.01) ? backLighting : frontLighting;
-
-    // Side lighting
-    float3 sideLighting = abs(input.Normal.x) * invAmbient * 0.3 + lighting;
-    lighting = saturate((input.Normal.x < -0.01) ? sideLighting : lighting);
-
-    // Apply lighting
-    float3 color = (lighting * DiffuseLight * 0.5) + invDiffuse;
-
-    // Calculate alpha
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
     float alpha = (1.0 - texColor.a) * input.Color.a;
 
-    return float4(color, alpha);
+    return float4(color * 0.5, alpha);
 }
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
+
     float3 color = texColor.rgb * input.Color.rgb;
     float alpha = (1.0 - texColor.a) * input.Color.a;
+
     return float4(color, alpha);
 }
 

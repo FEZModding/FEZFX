@@ -1,34 +1,20 @@
 // HwInstancedBlackHoleEffect
 // 801A7029BD7964B684FAD7CFDBE914E067329F215DC8D9F65BC39E4E0A311239
 
-#include "Common.fxh"
+#include "BaseEffect.fxh"
 
-float4x4 Matrices_WorldViewProjection;
-float2 TexelOffset;
+float IsTextureEnabled;     // boolean
 
-bool IsTextureEnabled;
-texture BaseTexture;
+DECLARE_TEXTURE(BaseTexture);
 
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
-
-struct VS_BODY_INPUT
+struct VS_INPUT
 {
     float4 Position : POSITION;
-    float4 InstancePosition : TEXCOORD2;
-    float4 InstanceDiffuse : TEXCOORD3;
-};
-
-struct VS_FRINGE_INPUT
-{
-    float4 Position : POSITION;
-    float4 TexCoord : TEXCOORD;
-    float4 InstancePosition : TEXCOORD2;
-    float4 InstanceDiffuse : TEXCOORD3;
-    float4 InstanceTextureOffset : TEXCOORD4;
-    float4 InstanceTextureScale : TEXCOORD5;
+    float2 TexCoord : TEXCOORD;
+    float3 InstancePosition : TEXCOORD2;
+    float3 InstanceDiffuse : TEXCOORD3;
+    float2 InstanceTextureOffset : TEXCOORD4;
+    float2 InstanceTextureScale : TEXCOORD5;
 };
 
 struct VS_OUTPUT
@@ -38,80 +24,56 @@ struct VS_OUTPUT
     float4 Position : POSITION;
 };
 
-VS_OUTPUT VS_Body(VS_BODY_INPUT input)
+VS_OUTPUT VS_Body(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    float3x4 instanceMatrix;
-    instanceMatrix[0] = float4(1, 0, 0, input.InstancePosition.x);
-    instanceMatrix[1] = float4(0, 1, 0, input.InstancePosition.y);
-    instanceMatrix[2] = float4(0, 0, 1, input.InstancePosition.z);
+    float4x4 xform = CreateTransform(input.InstancePosition);
+    float4 worldPos = mul(input.Position, xform);
+
+    float4 worldViewPos = TransformPositionToClip(worldPos);
+    output.Position = ApplyTexelOffset(worldViewPos);
     
-    float4 worldPos;
-    worldPos.x = dot(input.Position, instanceMatrix[0]);
-    worldPos.y = dot(input.Position, instanceMatrix[1]);
-    worldPos.z = dot(input.Position, instanceMatrix[2]);
-    worldPos.w = input.Position.w;
-    
-    float4 worldViewPos = mul(worldPos, Matrices_WorldViewProjection);
-    output.Position.xy = (TexelOffset * worldViewPos.w) + worldViewPos.xy;
-    output.Position.zw = worldViewPos.zw;
-    
-    output.TexCoord = float2(0, 0);
-    output.Color = input.InstanceDiffuse.rgb;
+    output.TexCoord = 0;
+    output.Color = input.InstanceDiffuse;
 
     return output;
 }
 
-VS_OUTPUT VS_Fringe(VS_FRINGE_INPUT input)
+VS_OUTPUT VS_Fringe(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    float2x3 uvTransform;
-    uvTransform[0] = float3(input.InstanceTextureScale.x, 0.0, input.InstanceTextureOffset.x);
-    uvTransform[1] = float3(0.0, input.InstanceTextureScale.y, input.InstanceTextureOffset.y);
+    float4x4 xform = CreateTransform(input.InstancePosition);
+    float4 worldPos = mul(input.Position, xform);
 
-    float3 texCoord = float3(input.TexCoord.xy, 1.0);
-    output.TexCoord.x = dot(texCoord, uvTransform[0]);
-    output.TexCoord.y = dot(texCoord, uvTransform[1]);
+    float4 worldViewPos = TransformPositionToClip(worldPos);
+    output.Position = ApplyTexelOffset(worldViewPos);
 
-    float3x4 instanceMatrix;
-    instanceMatrix[0] = float4(1, 0, 0, input.InstancePosition.x);
-    instanceMatrix[1] = float4(0, 1, 0, input.InstancePosition.y);
-    instanceMatrix[2] = float4(0, 0, 1, input.InstancePosition.z);
+    float3x3 xform2D = CreateTransform2D(input.InstanceTextureOffset, input.InstanceTextureScale);
+    output.TexCoord = TransformTexCoord(input.TexCoord, xform2D);
+    output.Color = input.InstanceDiffuse;
 
-    float4 worldPos;
-    worldPos.x = dot(input.Position, instanceMatrix[0]);
-    worldPos.y = dot(input.Position, instanceMatrix[1]);
-    worldPos.z = dot(input.Position, instanceMatrix[2]);
-    worldPos.w = input.Position.w;
-
-    float4 worldViewPos = mul(worldPos, Matrices_WorldViewProjection);
-    output.Position.xy = (TexelOffset * worldViewPos.w) + worldViewPos.xy;
-    output.Position.zw = worldViewPos.zw;
-
-    output.Color = input.InstanceDiffuse.rgb;
-    
     return output;
 }
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 output;
+    float4 color;
     
     if (IsTextureEnabled)
     {
-        float4 texColor = tex2D(BaseSampler, input.TexCoord);
-        output.rgb = texColor.rgb * input.Color;
-        output.a = texColor.a;
-        clip(output.a - ALPHA_THRESHOLD);
+        float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
+        color.rgb = texColor.rgb * input.Color;
+        color.a = texColor.a;
+        ApplyAlphaTest(color.a);
     }
     else
     {
-        output = float4(input.Color, 1.0);
+        color = float4(input.Color, 1.0);
     }
     
-    return output;
+    return color;
 }
 
 technique TSM2

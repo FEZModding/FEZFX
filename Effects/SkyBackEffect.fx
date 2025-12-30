@@ -1,15 +1,9 @@
 // SkyBackEffect
 // D2D752E06F61467200315E64D415EE80D8C129BB4B595E0957C343AA2F105F3A
 
-float4x4 Matrices_WorldViewProjection;
-float3x3 Matrices_Texture;
-float2 TexelOffset;
-texture BaseTexture;
+#include "BaseEffect.fxh"
 
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 struct VS_INPUT
 {
@@ -26,19 +20,17 @@ struct VS_OUTPUT
 VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
-    
-    output.Position = mul(input.Position, Matrices_WorldViewProjection);
-    output.Position.xy += TexelOffset * output.Position.w;
-    
-    float3 texCoord = float3(input.TexCoord, 1.0);
-    output.TexCoord = mul(texCoord, Matrices_Texture).xy;
-    
+
+    float4 worldViewPos = TransformPositionToClip(input.Position);
+    output.Position = ApplyTexelOffset(worldViewPos);
+    output.TexCoord = TransformTexCoord(input.TexCoord);
+
     return output;
 }
 
-float4 PS_P0(VS_OUTPUT input) : COLOR0
+float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
     return float4(texColor.rgb, 1.0);
 }
 
@@ -47,6 +39,6 @@ technique TSM2
     pass P0
     {
         VertexShader = compile vs_2_0 VS();
-        PixelShader = compile ps_2_0 PS_P0();
+        PixelShader = compile ps_2_0 PS();
     }
 }

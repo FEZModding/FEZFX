@@ -1,10 +1,7 @@
 // MapEffect
 // 4FE19FCEEC9263809FBE71E54A752676CE32719076062E7B3F7605BA4FA22E8A
 
-float3 Material_Diffuse;
-float Material_Opacity;
-float4x4 Matrices_WorldViewProjection;
-float2 TexelOffset;
+#include "BaseEffect.fxh"
 
 struct VS_INPUT
 {
@@ -22,8 +19,8 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    output.Position = mul(input.Position, Matrices_WorldViewProjection);
-    output.Position.xy += TexelOffset * output.Position.w;
+    float4 worldViewPos = TransformPositionToClip(input.Position);
+    output.Position = ApplyTexelOffset(worldViewPos);
     output.Color = input.Color;
 
     return output;
@@ -31,9 +28,10 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    clip(input.Color.a * Material_Opacity - 0.01);
-    float4 material = float4(Material_Diffuse, Material_Opacity * Material_Opacity);
-    return input.Color * material;
+    float3 color = input.Color.rgb * Material_Diffuse;
+    float alpha = input.Color.a * Material_Opacity;
+    clip(alpha - 0.01);
+    return float4(color, alpha);
 }
 
 technique TSM2

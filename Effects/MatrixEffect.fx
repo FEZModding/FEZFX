@@ -1,18 +1,9 @@
 // MatrixEffect
 // FF3080A9952F5C24037F19E24B6EC9141060CE0376DB2DEAE2FAAC20EF86FF14
 
-#include "Common.fxh"
+#include "BaseEffect.fxh"
 
-float3 Material_Diffuse;
-float Material_Opacity;
-float4x4 Matrices_WorldViewProjection;
-float2 TexelOffset;
-texture BaseTexture;
-
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 struct VS_INPUT
 {
@@ -30,9 +21,8 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    float4 worldPos = mul(input.Position, Matrices_WorldViewProjection);
-    output.Position.xy = (TexelOffset * worldPos.w) + worldPos.xy;
-    output.Position.zw = worldPos.zw;
+    float4 worldViewPos = TransformPositionToClip(input.Position);
+    output.Position = ApplyTexelOffset(worldViewPos);
     output.TexCoord = input.TexCoord;
 
     return output;
@@ -40,13 +30,13 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
-    
-    float alphaTest = texColor.a * Material_Opacity;
-    clip(alphaTest - ALPHA_THRESHOLD);
-    
-    float3 materialDiffuse = (Material_Diffuse * 0.75) + 0.5;
-    return float4(texColor.rgb * materialDiffuse, alphaTest);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
+
+    float3 color = texColor.rgb * (Material_Diffuse * 0.75 + 0.5);
+    float alpha = texColor.a * Material_Opacity;
+    ApplyAlphaTest(alpha);
+
+    return float4(color, alpha);
 }
 
 technique TSM2

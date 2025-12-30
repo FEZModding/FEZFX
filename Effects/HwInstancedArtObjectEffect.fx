@@ -3,11 +3,7 @@
 
 #include "BaseEffect.fxh"
 
-texture CubemapTexture;
-sampler2D CubemapSampler = sampler_state
-{
-    Texture = <CubemapTexture>;
-};
+DECLARE_TEXTURE(CubemapTexture);
 
 struct VS_INPUT
 {
@@ -95,7 +91,7 @@ float4 PS_Pre(VS_OUTPUT input) : COLOR0
     clip(input.Visibility);
     ApplyAlphaTest(input.Opacity);
 
-    float4 texColor = tex2D(CubemapSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(CubemapTexture, input.TexCoord);
     
     float3 color = CalculateLighting(input.Normal, texColor.a);
     color = lerp(color, 1.0, input.FogFactor);
@@ -108,7 +104,7 @@ float4 PS_Main(VS_OUTPUT input) : COLOR0
     clip(input.Visibility);
     ApplyAlphaTest(input.Opacity);
 
-    float4 texColor = tex2D(CubemapSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(CubemapTexture, input.TexCoord);
 
     float3 color = texColor.rgb;
     if (input.ForceShading)

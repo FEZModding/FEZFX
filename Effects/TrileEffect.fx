@@ -14,11 +14,7 @@ float TiltTwoAxis;      // boolean
 float Shiny;            // boolean
 float ForceShading;     // boolean, unused
 
-texture AtlasTexture;
-sampler2D AtlasSampler = sampler_state
-{
-    Texture = <AtlasTexture>;
-};
+DECLARE_TEXTURE(AtlasTexture);
 
 struct VS_INPUT
 {
@@ -137,7 +133,7 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(AtlasSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(AtlasTexture, input.TexCoord);
 
     float brightness = (texColor.a + input.Shininess.x) * input.Visibility;
     float3 litColor = CalculateLighting(input.Normal, brightness);
@@ -149,7 +145,7 @@ float4 PS_Pre(VS_OUTPUT input) : COLOR0
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(AtlasSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(AtlasTexture, input.TexCoord);
 
     float brightness = (texColor.a + input.Shininess.x) * input.Visibility;
 

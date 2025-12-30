@@ -12,11 +12,7 @@ float Emissive;
 float TextureEnabled;   // boolean
 float SpecularEnabled;  // boolean
 
-texture BaseTexture;
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 float3 ApplyLitShading(float3 normal, float brightness, float3 diffuse)
 {

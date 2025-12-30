@@ -34,7 +34,7 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
 
     float alpha = input.Color.a * Material_Opacity;
     if (TextureEnabled && !AlphaIsEmissive)
@@ -61,7 +61,7 @@ float4 PS_Main(VS_OUTPUT input) : COLOR0
 
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = tex2D(BaseSampler, input.TexCoord);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
     return CalculatePrePassTextured(texColor);
 }
 

@@ -5,13 +5,9 @@
 
 float4x4 InstanceData[58];
 float4x4 CameraRotation;
-float Billboard;
+float Billboard;        // boolean
 
-texture BaseTexture;
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 struct VS_INPUT
 {
@@ -32,23 +28,17 @@ VS_OUTPUT VS(VS_INPUT input)
     VS_OUTPUT output;
 
     int index = trunc(input.InstanceIndex);
-    float4 InstanceTranslation = InstanceData[index][0];
+    float3 InstanceTranslation = InstanceData[index][0].xyz;
     float4 InstanceColor = InstanceData[index][1];
-    float4 InstanceScale = InstanceData[index][2];
+    float3 InstanceScale = InstanceData[index][2].xyz;
     float4 InstanceTexture = InstanceData[index][3];
 
     float4x4 rotation = (Billboard) ? CameraRotation : MATRIX_IDENTITY;
-    float3x3 basis = float3x3(
-        rotation[0].xyz * InstanceScale.x,
-        rotation[1].xyz * InstanceScale.y,
-        rotation[2].xyz * InstanceScale.z
-    );
-    
-    float3 transform = mul(input.Position, basis);
-    float4 worldPos = float4(transform + InstanceTranslation, input.Position.w);
+    float4x4 xform = CreateTransform(InstanceTranslation, (float3x3)rotation, InstanceScale);
+    float4 worldPos = mul(input.Position, xform);
 
-    float4 clipPos = TransformPositionToClip(worldPos);
-    output.Position = ApplyTexelOffset(clipPos);
+    float4 worldViewPos = TransformPositionToClip(worldPos);
+    output.Position = ApplyTexelOffset(worldViewPos);
     output.Color = (Billboard) ? 1.0 : InstanceColor;
     output.TexCoord = input.TexCoord * InstanceTexture.zw + InstanceTexture.xy;
 
@@ -57,10 +47,9 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float alpha = input.Color.a;
-    clip(alpha - 0.01);
-    
-    float4 color = (Billboard) ? tex2D(BaseSampler, input.TexCoord) : 1.0;
+    clip(input.Color.a - 0.01);
+
+    float4 color = (Billboard) ? SAMPLE_TEXTURE(BaseTexture, input.TexCoord) : 1.0;
     return color * input.Color;
 }
 

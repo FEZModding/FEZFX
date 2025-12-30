@@ -6,8 +6,8 @@
 float TimeAccumulator;
 float ShoreTotalWidth;
 float ScreenCenterSide;
-float IsEmerged;
-float IsWobbling;
+float IsEmerged;        // boolean
+float IsWobbling;       // boolean
 
 struct VS_INPUT
 {
@@ -41,16 +41,13 @@ VS_OUTPUT VS(VS_INPUT input)
         ? ((IsEmerged) ? large : small)
         : ((IsEmerged) ? small : large);
 
-    // Compute wave position
     float2 wavePos;
     wavePos.x = offset + input.Position.x;
     wavePos.y = waveHeight * input.Position.y;
 
-    // Apply conditional wobbling effect
     float4 position = input.Position;
     position.xy = IsWobbling ? wavePos.xy : input.Position.xy;
     
-    // Transform to clip space
     float4 worldViewPos = TransformPositionToClip(position);
     output.Position = ApplyTexelOffset(worldViewPos);
 

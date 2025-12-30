@@ -1,18 +1,11 @@
 // ScanlineEffect
 // 4C93D5D8870A4D52F2543721E17AD048345A450510250B93276564CAECC992BC
 
-#include "Common.fxh"
+#include "BaseEffect.fxh"
 
-float3x3 Matrices_Texture;
-float Time;
-float Material_Opacity;
-float2 TexelOffset;
-texture BaseTexture;
+static const float SCANLINE_FREQ = 300.0 * PI;
 
-sampler2D BaseSampler = sampler_state
-{
-    Texture = <BaseTexture>;
-};
+DECLARE_TEXTURE(BaseTexture);
 
 struct VS_INPUT
 {
@@ -30,8 +23,7 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    output.Position.xy = (TexelOffset * input.Position.w) + input.Position.xy;
-    output.Position.zw = input.Position.zw;
+    output.Position = ApplyTexelOffset(input.Position);
     output.TexCoord = input.TexCoord;
 
     return output;
@@ -42,30 +34,19 @@ float4 PS(VS_OUTPUT input) : COLOR0
     // Barrel distortion
     float2 offset = input.TexCoord - 0.5;
     float distSq = dot(offset, offset);
-    float2 undistorted = (offset * 2.0) + 0.5;
-    float distortStrength = pow(abs(distSq), 1.5);
-    float2 distortedUV = lerp(input.TexCoord, undistorted, distortStrength);
+    float2 bulged = offset * 2.0 + 0.5;
+    float distortion = pow(abs(distSq), 1.5);
 
-    // Transform UVs using matrix
-    float3 uvw = float3(distortedUV, 1.0);
-    float2 uv = mul(uvw, Matrices_Texture).xy;
-    float4 texColor = tex2D(BaseSampler, uv);
+    // Sample texture
+    float2 texCoord = lerp(input.TexCoord, bulged, distortion);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, texCoord);
 
-    // Scanline phase
-	const float SCANLINE_FREQ = 300 * PI;
-    float scanlinePhase = uv.y * SCANLINE_FREQ + (Time * 2.0);
+    // Scanline phase with RGB offset
+    float scanlinePhase = texCoord.y * SCANLINE_FREQ + Time * 2.0;
     float3 phases = scanlinePhase + float3(0.0, 1.0, 2.0);
-    phases = frac(phases * (1.0 / TAU) + 0.25) * TAU - PI;	// [-PI, PI] range
-
-    // Taylor series cos(x) approximation: 1 - x²/2! + x⁴/4! - x⁶/6! + x⁸/8!
-    float3 x2 = phases * phases;
-    float3 cosVal = x2 * 0.000025 - 0.001389;
-    cosVal = x2 * cosVal + 0.041667;
-    cosVal = x2 * cosVal - 0.5;
-    cosVal = x2 * cosVal + 1.0;
 
     // Apply scanline modulation
-    float3 scanline = cosVal * 0.5 + 0.8;	// [0.3, 1.3] range
+    float3 scanline = cos(phases) * 0.5 + 0.8;
     float3 color = texColor.rgb * scanline;
 
     return float4(color, Material_Opacity);
