@@ -10,10 +10,10 @@ struct VS_INPUT
     float4 Position : POSITION0;
     float3 Normal : NORMAL0;
     float2 TexCoord : TEXCOORD0;
-    float3 Center : TEXCOORD2;
-    float3 Size : TEXCOORD3;
-    float4 Color : TEXCOORD4;
-    float4 TextureMatrix : TEXCOORD5;
+    float3 Center : TEXCOORD2;          // Row 1 : Position (xyz), Unused (w)
+    float3 Size : TEXCOORD3;            // Row 2 : Scale (xyz), Unused (w)
+    float4 Color : TEXCOORD4;           // Row 3 : Color with alpha (xyzw)
+    float4 TextureMatrix : TEXCOORD5;   // Row 4 : Texture matrix { m11, m22, m31, m32 } (xyzw)
 };
 
 struct VS_OUTPUT
@@ -28,6 +28,8 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
+    output.Color = input.Color;
+    output.Normal = input.Normal;
     output.TexCoord = input.TexCoord * input.TextureMatrix.xy + input.TextureMatrix.zw;
     
     float4x4 xform = CreateTransform(input.Center, input.Size);
@@ -37,33 +39,29 @@ VS_OUTPUT VS(VS_INPUT input)
     float4 worldViewPos = TransformPositionToClip(position); 
     output.Position = ApplyTexelOffset(worldViewPos);
 
-    output.Color = input.Color;
-    output.Normal = input.Normal;
-
     return output;
 }
 
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
-    float tint = saturate(input.Color.rgb - 1.0);
-    float3 color = CalculateLighting(input.Normal, tint.x);
-
+    float3 emissive = saturate(input.Color.rgb - 1.0);
+    float3 shade = PerAxisShading(input.Normal, emissive.x);
+    
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-    float alpha = (1.0 - texColor.a) * input.Color.a;
+    float3 color = DiffuseLight * 0.5 * shade + (1.0 - DiffuseLight) * emissive;
+    float alpha = input.Color.a * (1.0 - texColor.a);
 
-    return float4(color * 0.5, alpha);
+    return float4(color, alpha);
 }
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-
     float3 color = texColor.rgb * input.Color.rgb;
-    float alpha = (1.0 - texColor.a) * input.Color.a;
+    float alpha =  input.Color.a * (1.0 - texColor.a);
 
     return float4(color, alpha);
 }
-
 technique TSM2
 {
     pass Pre

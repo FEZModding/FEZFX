@@ -26,75 +26,72 @@ struct VS_OUTPUT
 {
     float4 Position : POSITION0;
     float3 Normal : TEXCOORD0;
-    float4 WorldViewPos : TEXCOORD1;
-    float4 CubePos : TEXCOORD2;
+    float4 ProjTC : TEXCOORD1;
+    float4 CenterTC : TEXCOORD2;
 };
+
+float NodeShading(float3 normal)
+{
+    float shade = saturate(BaseAmbient).x;
+    float remainder = (1.0 - BaseAmbient).x;
+    
+    shade += saturate(dot(normal, 1.0)) * remainder;
+    if (normal.z < -0.01)
+    {
+        shade += abs(normal.z) * remainder * 0.6;
+    }
+    else if (normal.x > 0.01)
+    {
+        shade -= abs(normal.x) * remainder * 0.2;
+    }	
+    if (normal.x < -0.01)
+    {
+        shade += abs(normal.x) * remainder * 0.4;
+    }   
+    if (normal.y > 0.01)
+    {
+        shade -= abs(normal.y) * remainder * 0.1;
+    }
+    
+    return saturate(shade);
+}
 
 VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
-
+    
+    float4 position = TransformPositionToClip(input.Position);
     output.Normal = TransformNormalToWorld(input.Normal);
-    output.CubePos = TransformWorldToClip(float4(CubeOffset, 1.0));
-    output.WorldViewPos = TransformPositionToClip(input.Position);
-    output.Position = output.WorldViewPos;
+    output.ProjTC = position;
+    output.CenterTC = TransformWorldToClip(float4(CubeOffset, 1.0));
+    output.Position = position;
 
     return output;
 }
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float invAmbient = 1.0 - BaseAmbient;
-    float ndotl = saturate(dot(input.Normal, 1.0));
-    float lighting = ndotl * invAmbient + saturate(BaseAmbient);
+    // Project texture coords
+    float2 texCoord = float2(input.ProjTC.x, -input.ProjTC.y) / input.ProjTC.w;
+    float2 centerTexCoord = float2(input.CenterTC.x, -input.CenterTC.y) / input.CenterTC.w;
 
-    float faceLight = lighting;
-    if (input.Normal.x < 0.01) // Negative X face
-    {
-        faceLight = lighting - (abs(input.Normal.x) * invAmbient * 0.2);
-    }
-    if (input.Normal.z >= -0.01) // Positive Z face
-    {
-        faceLight = lighting + (abs(input.Normal.z) * invAmbient * 0.6);
-    }
-    if (input.Normal.x >= -0.01) // Positive X face
-    {
-        faceLight = faceLight + (abs(input.Normal.x) * invAmbient * 0.4);
-    }
-    if (input.Normal.y < 0.01) // Negative Y face
-    {
-        faceLight = faceLight - (abs(input.Normal.y) * invAmbient * 0.1);
-    }
-    
-    faceLight = saturate(faceLight);
-    float lightPower = pow(faceLight, 0.75);
-
-    // Project CubePos
-    float2 cubeProj = input.CubePos.xy / input.CubePos.w;
-    cubeProj.y = -cubeProj.y;
-    cubeProj *= PixelsPerTrixel;
-    
-    // Project WorldViewPos
-    float2 worldProj = input.WorldViewPos.xy / input.WorldViewPos.w;
-    worldProj.y = -worldProj.y;
-
-    // Calculate texture coord from projected positions
-    float2 texCoord = (worldProj * PixelsPerTrixel) - cubeProj;
-    texCoord *= (1.0 / TextureSize) * ViewportSize;
-    texCoord = texCoord * 0.166667 + 0.5;
+    // Calculate sample coord from projected coords
+    texCoord *= PixelsPerTrixel;
+    texCoord -= centerTexCoord * PixelsPerTrixel;
+    texCoord *= ViewportSize / TextureSize / 3.0;
+    texCoord = 0.5 * texCoord + 0.5;
     texCoord += 0.5 / ViewportSize;
 
-    float3 color = SAMPLE_TEXTURE(BaseTexture, texCoord).rgb;
-    if (NoTexture)
-    {
-        color = DARK_COLOR;
-    }
-    if (Complete)
+    float3 color = (NoTexture != 0.0)
+        ? DARK_COLOR
+        : SAMPLE_TEXTURE(BaseTexture, texCoord).rgb;
+
+    if (Complete != 0.0)
     {
         color *= GOLD_COLOR;
     }
-    color *= lightPower;
-
+    color *= pow(NodeShading(input.Normal), 0.75);
+    
     return float4(color, Material_Opacity);
 }
 

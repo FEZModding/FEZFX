@@ -33,7 +33,7 @@ float4 PS(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
 
-    float3 color = (ShadowPass)
+    float3 color = (ShadowPass != 0.0)
         ? saturate(texColor.rgb * 2.0)
         : saturate(texColor.rgb - 0.5) * 4.0 + 1.0;
 

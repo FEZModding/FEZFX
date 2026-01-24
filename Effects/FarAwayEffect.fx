@@ -34,11 +34,9 @@ float4 PS(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
     
-    float alpha = texColor.a * Material_Opacity;
+    float3 color = lerp(Material_Diffuse, texColor.rgb, Material_Opacity);
+    float alpha = texColor.a * ActualOpacity;
     ApplyAlphaTest(alpha);
-
-    float3 diff = texColor.rgb - Material_Diffuse;
-    float3 color = Material_Diffuse + Material_Opacity * diff;
     
     return float4(color, alpha);
 }

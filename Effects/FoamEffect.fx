@@ -12,7 +12,7 @@ float IsWobbling;       // boolean
 struct VS_INPUT
 {
     float4 Position : POSITION0;
-    float4 Normal : NORMAL0;
+    float3 InstanceData : NORMAL0;
 };
 
 struct VS_OUTPUT
@@ -24,29 +24,36 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    // Calculate the offset to draw the foam line.
-    float offset = input.Normal.x - ScreenCenterSide;
-    offset += sign(offset) * ShoreTotalWidth * 0.5;
-    offset = trunc(offset / ShoreTotalWidth);
-    offset = input.Normal.x - (offset * ShoreTotalWidth);
-
-    // Calculate small or large wave height
-    float wave = cos(offset * 2.0 + TimeAccumulator * 3.0);
-    float denominator = 3.0 - abs(wave);
-    float small = denominator / 3.0;
-    float large = 3.0 / denominator;
-    
-    // Select final wave height
-    float waveHeight = (sign(wave) > 0.0)
-        ? ((IsEmerged) ? large : small)
-        : ((IsEmerged) ? small : large);
-
-    float2 wavePos;
-    wavePos.x = offset + input.Position.x;
-    wavePos.y = waveHeight * input.Position.y;
-
     float4 position = input.Position;
-    position.xy = IsWobbling ? wavePos.xy : input.Position.xy;
+    if (IsWobbling != 0.0)
+    {
+        float stripOffset = input.InstanceData.x;
+
+        float fits;
+        float dist = stripOffset - ScreenCenterSide;
+        modf((dist + sign(dist) * (ShoreTotalWidth / 2.0)) / ShoreTotalWidth, fits);
+        stripOffset -= fits * ShoreTotalWidth;
+
+        float dY = sin(stripOffset * 2.0 + TimeAccumulator * 3.0);
+        float scaleNorD = abs(dY);
+
+        float vScale;
+        if (IsEmerged != 0.0)
+        {
+            vScale = sign(dY) != 1.0
+                ? 3.0 / (3.0 - scaleNorD)
+                : (3.0 - scaleNorD) / 3.0;
+        }
+        else
+        {
+            vScale = sign(dY) == 1.0
+                ? 3.0 / (3.0 - scaleNorD)
+                : (3.0 - scaleNorD) / 3.0;
+        }
+
+        position.y *= vScale;
+        position.x += stripOffset;
+    }
     
     float4 worldViewPos = TransformPositionToClip(position);
     output.Position = ApplyTexelOffset(worldViewPos);

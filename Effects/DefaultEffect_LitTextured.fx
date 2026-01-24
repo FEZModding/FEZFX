@@ -31,28 +31,28 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-
+    float3 color = Material_Diffuse;
     float alpha = Material_Opacity;
-    if (TextureEnabled && !AlphaIsEmissive)
+
+    float emissive = (Fullbright > 0.5) ? 1.0 : Emissive;
+    if (TextureEnabled > 0.5)
     {
-        alpha *= texColor.a;
+        float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
+        color *= texColor.rgb;
+        if (AlphaIsEmissive < 0.5)
+        {
+            alpha *= texColor.a;
+        }
+        else
+        {
+            emissive = texColor.a;
+        }
     }
+    
+    // NOTE: This present in HLSL bytecode of PC version
     ApplyAlphaTest(alpha);
-
-    float3 diffuse = Material_Diffuse;
-    if (TextureEnabled)
-    {
-        diffuse *= texColor.rgb;
-    }
-
-    float brightness = (Fullbright) ? 1.0 : Emissive;
-    if (TextureEnabled && AlphaIsEmissive)
-    {
-        brightness = texColor.a;
-    }
-
-    float3 color = ApplyLitShading(input.Normal, brightness, diffuse);
+    
+    color = ComputeLightWithSpecular(input.Normal, emissive, color);
 
     return float4(color, alpha);
 }

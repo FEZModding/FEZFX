@@ -3,7 +3,12 @@
 
 #include "BaseEffect.fxh"
 
+// Row 1 : Position (xyz), unused (w)
+// Row 2 : Diffuse (xyz), unused (w)
+// Row 3 : Texture matrix position (xy), unused (zw)
+// Row 4 : Texture matrix scale (xy), unused (zw)
 float4x4 InstanceData[60];
+
 float IsTextureEnabled;     // boolean
 
 DECLARE_TEXTURE(BaseTexture);
@@ -18,7 +23,7 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float2 TexCoord : TEXCOORD0;
-    float3 Color : TEXCOORD1;
+    float3 Diffuse : TEXCOORD1;
     float4 Position : POSITION;
     float InstanceIndex : TEXCOORD2;
 };
@@ -26,19 +31,15 @@ struct VS_OUTPUT
 VS_OUTPUT VS_Body(VS_INPUT input)
 {
     VS_OUTPUT output;
+    float4x4 data = InstanceData[(int)input.InstanceIndex];
 
-    int index = floor(input.InstanceIndex);
-    float4 InstancePosition = InstanceData[index][0];
-    float4 InstanceDiffuse = InstanceData[index][1];
-
-    float4x4 xform = CreateTransform(InstancePosition);
+    float4x4 xform = CreateTransform(data[0].xyz);
     float4 worldPos = mul(input.Position, xform);
-
     float4 worldViewPos = TransformPositionToClip(worldPos);
     output.Position = ApplyTexelOffset(worldViewPos);
     
-    output.TexCoord = 0;
-    output.Color = InstanceDiffuse.rgb;
+    output.Diffuse = data[1].xyz;
+    output.TexCoord = 0.0;
     output.InstanceIndex = input.InstanceIndex;
 
     return output;
@@ -47,22 +48,17 @@ VS_OUTPUT VS_Body(VS_INPUT input)
 VS_OUTPUT VS_Fringe(VS_INPUT input)
 {
     VS_OUTPUT output;
+    float4x4 data = InstanceData[(int)input.InstanceIndex];
 
-    int index = floor(input.InstanceIndex);
-    float3 InstancePosition = InstanceData[index][0].xyz;
-    float3 InstanceDiffuse = InstanceData[index][1].xyz;
-    float2 InstanceTextureOffset = InstanceData[index][2].xy;
-    float2 InstanceTextureScale = InstanceData[index][3].xy;
+    float3x3 xform2D = CreateTransform2D(data[2].xy, data[3].xy);
+    output.TexCoord = TransformTexCoord(input.TexCoord, xform2D);
     
-    float4x4 xform = CreateTransform(InstancePosition);
+    float4x4 xform = CreateTransform(data[0].xyz);
     float4 worldPos = mul(input.Position, xform);
-
     float4 worldViewPos = TransformPositionToClip(worldPos);
     output.Position = ApplyTexelOffset(worldViewPos);
 
-    float3x3 xform2D = CreateTransform2D(InstanceTextureOffset, InstanceTextureScale);
-    output.TexCoord = TransformTexCoord(input.TexCoord, xform2D);
-    output.Color = InstanceDiffuse;
+    output.Diffuse = data[1].xyz;
     output.InstanceIndex = input.InstanceIndex;
     
     return output;
@@ -70,18 +66,14 @@ VS_OUTPUT VS_Fringe(VS_INPUT input)
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 color;
+    float4 color = float4(input.Diffuse, 1.0);
     
-    if (IsTextureEnabled)
+    if (IsTextureEnabled != 0.0)
     {
         float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-        color.rgb = texColor.rgb * input.Color;
-        color.a = texColor.a;
+        color.rgb *= texColor.rgb;
+        color.a *= texColor.a;
         ApplyAlphaTest(color.a);
-    }
-    else
-    {
-        color = float4(input.Color, 1.0);
     }
     
     return color;

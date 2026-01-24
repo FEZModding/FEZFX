@@ -31,21 +31,9 @@
 
 static const float PI = 3.14159274;
 
-static const float INV_PI = 1.0 / PI;
-
 static const float TAU = 2.0 * PI;
 
-static const float INV_TAU = 1.0 / TAU;
-
-static const float E = 2.71828183;
-
-static const float LOG2E = 1.44269502;
-
 static const float ALPHA_THRESHOLD = 1.0 / 256.0;
-
-static const float4 WHITE = RGBA(0xFFFFFFFF);
-
-static const float4 TRANSPARENT = RGBA(0x00000000);
 
 //------------------------------------------------------------------------------
 // FOG SEMANTICS
@@ -62,25 +50,25 @@ float3 Fog_Color;
 
 float Fog_Density;
 
-float ApplyExponentialSquaredFog(float distance, float density)
+float Exp2Fog(float distance, float density)
 {
-    float depth3 = pow(distance * density, 3);
-    float expFog = exp2(depth3 * LOG2E);
-    return 1.0 - (1.0 / expFog);
+    return 1.0 / exp(pow(distance * density, 3.0));
 }
 
-float ApplyFog(float distance, float density)
+float ApplyFog(float distance)
 {
-    if (Fog_Type == FOG_TYPE_EXP_SQR)
+    if (Fog_Type == FOG_TYPE_NONE)
     {
-        return ApplyExponentialSquaredFog(distance, density);
-    }
-    else if (Fog_Type == FOG_TYPE_NONE)
-    {
-        return 0.0;
+        return 1.0;
     }
     
-    return 0.0;
+    if (Fog_Type == FOG_TYPE_EXP_SQR)
+    {
+        return Exp2Fog(distance, Fog_Density);
+    }
+    
+    // NOTE: FOG_TYPE_EXP and FOG_TYPE_LINEAR not implemented
+    return 1.0;
 }
 
 //------------------------------------------------------------------------------
@@ -147,14 +135,6 @@ float3 Material_Diffuse;
 
 float Material_Opacity;
 
-float4 ApplyMaterialDefault(float3 color, float alpha)
-{
-    color *= Material_Diffuse;
-    alpha *= Material_Opacity;
-    clip(alpha - ALPHA_THRESHOLD);
-    return float4(color, alpha);
-}
-
 void ApplyAlphaTest(float alpha)
 {
     clip(alpha - ALPHA_THRESHOLD);
@@ -195,35 +175,36 @@ float4 ApplyEyeParallax(float4 position)
     return position + float4(dot(position.xyz - LevelCenter, Eye) * EyeSign, 0);
 }
 
-float3 CalculateLighting(float3 normal, float brightness)
+float3 PerAxisShading(float3 normal, float emissive)
 {
-    float3 ambient = saturate(brightness + BaseAmbient);
-    float3 invAmbient = 1.0 - BaseAmbient;
-    float3 invDiffuse = brightness  * (1.0 - DiffuseLight);
-
+    float3 shade = saturate(BaseAmbient + emissive);
+    float3 remainder = 1.0 - BaseAmbient;
+    
     // Front lighting for surfaces lit directly
-    float ndotl = saturate(dot(normal, 1.0));
-    float3 frontLighting = ndotl * invAmbient + ambient;
-
+    shade += saturate(dot(normal, 1.0)) * remainder;
+    
     // Back lighting for surfaces facing away (60% contribution)
-    float3 backLighting = abs(normal.z) * invAmbient * 0.6 + frontLighting;
-    float3 lighting = (normal.z < -0.01) ? backLighting : frontLighting;
-
+    if (normal.z < -0.01)
+    {
+        shade += abs(normal.z) * remainder * 0.6;
+    }
+    
     // Side lighting for surfaces facing left/right (30% contribution)
-    float3 sideLighting = abs(normal.x) * invAmbient * 0.3 + lighting;
-    lighting = saturate((normal.x < -0.01) ? sideLighting : lighting);
+    if (normal.x < -0.01)
+    {
+        shade += abs(normal.x) * remainder * 0.3;
+    }
+    
+    return saturate(shade);
+}
 
-    return DiffuseLight * lighting + invDiffuse;
+float3 ComputeLight(float3 normal, float emissive)
+{
+    float3 ambient = PerAxisShading(normal, emissive);
+    return ambient * DiffuseLight + emissive * (1.0 - DiffuseLight);
 }
 
 float ApplySpecular(float3 normal)
-{
-    float3 eyeDir = Eye - float3(0.0, 0.25, 0.0);
-    float specular = dot(eyeDir, normal);
-    return saturate(pow(specular, 8)) * 0.5;
-}
-
-float ApplySpecular2(float3 normal)
 {
     float3 eyeDir = Eye - float3(0.0, 0.25, 0.0);
     float specular = dot(eyeDir, normal);
@@ -314,31 +295,23 @@ float3x3 QuaternionToMatrix(float4 quaternion)
     );
 }
 
-float GetFlag(float flags, float bit)
-{
-    float flagValue = floor(flags);
-    float divisor = bit * 0.5;
-    float divided = flagValue / divisor;
-    float fraction = frac(divided);
-    return float(frac(fraction * 0.5) >= 0.5);
-}
-
 float3 HSV_RGB(float hue, float saturation, float value)
 {
     float h = hue * 6.0;
     float f = frac(h);
     int i = (int)floor(h) % 6;
 
+    float v = value;
     float p = value * (1.0 - saturation);
     float q = value * (1.0 - f * saturation);
     float t = value * (1.0 - (1.0 - f) * saturation);
 
-    if (i == 0)         return float3(value, t, p);
-    else if (i == 1)    return float3(q, value, p);
-    else if (i == 2)    return float3(p, value, t);
-    else if (i == 3)    return float3(p, q, value);
-    else if (i == 4)    return float3(t, p, value);
-    else                return float3(value, p, q);
+    if (i == 0) return float3(v, t, p);
+    else if (i == 1) return float3(q, v, p);
+    else if (i == 2) return float3(p, v, t);
+    else if (i == 3) return float3(p, q, v);
+    else if (i == 4) return float3(t, p, v);
+    else return float3(v, p, q);
 }
 
 #endif // BASE_EFFECT_FXH

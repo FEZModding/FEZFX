@@ -15,7 +15,7 @@ struct VS_INPUT
     float4 Position : POSITION;
     float4 Color : COLOR;
     float2 TexCoord : TEXCOORD;
-    float2 BillboardOffset : TEXCOORD1;
+    float2 Offset : TEXCOORD1;
 };
 
 struct VS_OUTPUT
@@ -23,20 +23,21 @@ struct VS_OUTPUT
     float4 Position : POSITION;
     float4 Color : COLOR;
     float2 TexCoord : TEXCOORD0;
-    float FogFactor : TEXCOORD1;
+    float Fog : TEXCOORD1;
 };
 
 VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
+    // Center position is transformed
     float4 worldViewPos = TransformPositionToClip(input.Position);
-    float2 screenOffset = (-TexelOffset * ViewScale) * input.BillboardOffset * worldViewPos.w;
-    output.Position = ApplyTexelOffset(worldViewPos, screenOffset * 2.0);
-
+	// Actual plane vertex offset is added in screen-space
+    output.Position = ApplyTexelOffset(worldViewPos, input.Offset * (-TexelOffset * 2.0 * ViewScale));
+    
     output.Color = input.Color * Material_Opacity * input.Color.a;
     output.TexCoord = input.TexCoord;
-    output.FogFactor = ApplyExponentialSquaredFog(worldViewPos.w, FOG_DENSITY);
+    output.Fog = saturate(1.0 - Exp2Fog(output.Position.w, FOG_DENSITY));
 
     return output;
 }
@@ -44,7 +45,7 @@ VS_OUTPUT VS(VS_INPUT input)
 float4 PS(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-    float4 fogColor = lerp(input.Color, FOG_COLOR, input.FogFactor);
+    float4 fogColor = lerp(input.Color, FOG_COLOR, input.Fog);
     return texColor * fogColor;
 }
 

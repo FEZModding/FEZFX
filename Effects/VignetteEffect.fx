@@ -21,8 +21,7 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    output.Position.xy = (TexelOffset * input.Position.w) + input.Position.xy;
-    output.Position.zw = input.Position.zw;
+    output.Position = ApplyTexelOffset(input.Position);
     output.TexCoord = input.TexCoord;
 
     return output;
@@ -30,15 +29,14 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float horizontalPower = clamp(pow(abs(3.0 * SinceStarted), 30.0), 4.0, 1000000.0);
-    float verticalPower = clamp(pow(abs(10.0 * SinceStarted), 15.0), 4.0, 1000000.0);
+    float horizontalPower = clamp(pow(abs(SinceStarted * 3.0), 30.0), 4.0, 1000000.0);
+    float verticalPower = clamp(pow(abs(SinceStarted * 10.0), 15.0), 4.0, 1000000.0);
+
+    float2 offset = input.TexCoord - 0.5;
+    float horizontalFactor = saturate(pow(abs(1.0 - offset.x * offset.x * 0.6), horizontalPower));
+	float verticalFactor = saturate(pow(abs(1.0 - offset.y * offset.y * 0.6), verticalPower));
     
-    float2 falloff = 1.0 - (pow(input.TexCoord - 0.5, 2) * 0.6);
-    float vignetteX = pow(abs(falloff.x), horizontalPower);
-    float vignetteY = pow(abs(falloff.y), verticalPower);
-    float vignette = (vignetteX * vignetteY) - 1.0;
-    
-    float3 color = (Material_Opacity * vignette) + 1.0;
+    float3 color = lerp(1.0, horizontalFactor * verticalFactor, Material_Opacity);
     return float4(color, 1.0);
 }
 

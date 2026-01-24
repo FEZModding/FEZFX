@@ -34,17 +34,14 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 leftColor = SAMPLE_TEXTURE(LeftTexture, input.TexCoord);
-    float4 rightColor = SAMPLE_TEXTURE(RightTexture, input.TexCoord);
+    float4 left = SAMPLE_TEXTURE(LeftTexture, input.TexCoord);
+    float4 right = SAMPLE_TEXTURE(RightTexture, input.TexCoord);
 
-    float3 leftFiltered = mul(LeftFilter, leftColor.rgb);
-    float3 rightFiltered = mul(RightFilter, rightColor.rgb);
+    float3 color = mul(LeftFilter, left.rgb) + mul(RightFilter, right.rgb);
+    color.r = pow(abs(color.r), 1.0 / RedGamma);
+    float alpha = max(left.a, right.a);
 
-    float3 combined = leftFiltered + rightFiltered;
-    float redGammaCorrected = pow(abs(combined.r), 1.0 / RedGamma);
-    float alpha = max(leftColor.a, rightColor.a);
-
-    return float4(redGammaCorrected, combined.gb, alpha);
+    return float4(color, alpha);
 }
 
 technique ShaderModel2

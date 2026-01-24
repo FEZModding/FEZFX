@@ -33,11 +33,12 @@ float4 PS(VS_OUTPUT input) : COLOR0
 {
     // Fisheye distortion
     float2 centered = (input.TexCoord - 0.5) * 2.0;
-    float2 distort = (1.0 - (centered * centered).yx) * Intensity.yx;
-    float2 texCoord = input.TexCoord - centered * distort;
+    float2 offset;
+    offset.x = (1.0 - (centered.y * centered.y)) * Intensity.y * centered.x;
+    offset.y = (1.0 - (centered.x * centered.x)) * Intensity.x * centered.y;
 
-    float3 color = SAMPLE_TEXTURE(BaseTexture, texCoord).rgb;
-    return float4(color, 1.0);
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord - offset);
+    return float4(texColor.rgb, 1.0);
 }
 
 technique TSM2

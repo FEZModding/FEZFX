@@ -20,7 +20,10 @@ XNA 4.0 Refresh. FNA integrates the
 generating GLSL code on the fly from HLSL bytecode. The compiled `.fxc` files
 were added in version `1.12`.
 
-As a result, there are three ways to recreate the shader:
+In 2017, the game was ported once again, this time to C++ for iOS.
+OpenGL is used for rendering, so the shaders are written in GLSL.
+
+As a result, there are four ways to recreate the shader:
 
 ## 1. DirectX Effects
 
@@ -126,3 +129,24 @@ Joking aside, this method is not so much about obtaining the code as it is about
 verifying the accuracy of MojoShader's GLSL code generation of reconstructed
 version of a shader (although `fxc /dumpbin` handles this case just fine as
 well, but for HLSL bytecode).
+
+## 4. iOS version
+
+The iOS version of the game (FEZ Pocket Edition) has two directories:
+`Content/Effects` and `Content/Effects_instancing`, which contain readable GLSL
+shader files. The shaders were not generated using MojoShader, but were ported
+manually, since the iOS version is a C++ port of the game and relies on OpenGL
+directly.
+
+The shader in the `Content/Effects` directory are closest to the PC ones.
+In the `Content/Effects_instancing` directory, some of the shaders are
+split up for optimization under OpenGL.
+
+Keep in mind when backporting:
+* Differences between built-in HLSL and GLSL functions.
+* Differences in vector matrix multiplication.
+* The absence of the `clip` function in GLSL.
+
+The discovery was made AFTER the shaders had already been reconstructed. In that
+case, it's a good source for sanity-checking shaders and making them a little
+more accurate.

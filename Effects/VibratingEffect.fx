@@ -17,36 +17,39 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float4 Position : POSITION0;
-    float2 TexCoord : TEXCOORD0;
-    float FogFactor : TEXCOORD1;
+    float4 Color : TEXCOORD0;
+    float Fog : TEXCOORD1;
 };
 
 VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    float3 phase = Time * 50.0 * input.Color.yzx;
-    phase.y = input.Color.y * TAU - phase.y;
-    phase.xz = input.Color.xz * TAU + phase.xz;
+    float sineY = sin(input.Color.r * TAU + Time * 50.0 * input.Color.g) * Intensity * 0.75 * input.Color.b;
+	float sineX = sin(input.Color.g * TAU - Time * 50.0 * input.Color.b) * Intensity * 0.125 * input.Color.r;
+	float sineZ = sin(input.Color.b * TAU + Time * 50.0 * input.Color.r) * Intensity * 0.125 * input.Color.g;
+    
+    float4 position;
+    position.x = input.Position.x + sineX;
+    position.y = sineY;
+    position.z = input.Position.z + sineZ;
+    position.w = input.Position.w;
 
-    float4 vibratingPos;
-    vibratingPos.x = sin(phase.y) * Intensity * input.Color.x * 0.125 + input.Position.x;
-    vibratingPos.z = sin(phase.z) * Intensity * input.Color.y * 0.125 + input.Position.z;
-    vibratingPos.y = sin(phase.x) * Intensity * input.Color.z * 0.75;
-    vibratingPos.w = input.Position.w;
-
-    float4 worldViewPos = TransformPositionToClip(vibratingPos);
+    float4 worldViewPos = TransformPositionToClip(position);
     output.Position = ApplyTexelOffset(worldViewPos);
-    output.TexCoord = 1.0;
-    output.FogFactor = ApplyExponentialSquaredFog(worldViewPos.w, FogDensity);
+    output.Fog = saturate(1.0 - Exp2Fog(output.Position.w, FogDensity));
+    output.Color = 1.0;
 
     return output;
 }
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float3 color = lerp(Material_Diffuse, FOG_COLOR, input.FogFactor);
-    return float4(color, Material_Opacity);
+    float3 color = input.Color.rgb * Material_Diffuse;
+    float alpha = input.Color.a * Material_Opacity;
+    
+    color = lerp(color, FOG_COLOR, input.Fog);
+    return float4(color, alpha);
 }
 
 technique TSM2

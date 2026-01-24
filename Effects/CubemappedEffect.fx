@@ -18,7 +18,7 @@ struct VS_OUTPUT
 {
     float4 Position : POSITION0;
     float3 Normal : TEXCOORD0;
-    float FogFactor : TEXCOORD1;
+    float Fog : TEXCOORD1;
     float2 TexCoord : TEXCOORD2;
 };
 
@@ -29,7 +29,7 @@ VS_OUTPUT VS(VS_INPUT input)
     float4 worldViewPos = TransformPositionToClip(input.Position);
     output.Position = ApplyTexelOffset(worldViewPos);
     output.Normal = TransformNormalToWorld(input.Normal);
-    output.FogFactor = ApplyFog(worldViewPos.w, Fog_Density);
+    output.Fog = 1.0 - ApplyFog(output.Position.w);
     output.TexCoord = input.TexCoord;
 
     return output;
@@ -38,9 +38,8 @@ VS_OUTPUT VS(VS_INPUT input)
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(CubemapTexture, input.TexCoord);
-    float3 color = CalculateLighting(input.Normal, texColor.a);
-
-    return float4(color * 0.5, Material_Opacity);
+    float3 color = ComputeLight(input.Normal, texColor.a) * 0.5;
+    return float4(color, Material_Opacity);
 }
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
@@ -48,11 +47,11 @@ float4 PS_Main(VS_OUTPUT input) : COLOR0
     float4 texColor = SAMPLE_TEXTURE(CubemapTexture, input.TexCoord);
     
     float3 color = texColor.rgb * Material_Diffuse;
-    if (ForceShading)
+    if (ForceShading != 0.0)
     {
-        color *= CalculateLighting(input.Normal, texColor.a);
+        color *= ComputeLight(input.Normal, texColor.a);
     }
-    color = lerp(color, Fog_Color, input.FogFactor);
+    color = lerp(color, Fog_Color, input.Fog);
 
     return float4(color, Material_Opacity);
 }

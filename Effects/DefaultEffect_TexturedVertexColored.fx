@@ -31,16 +31,15 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-
+    float3 color = input.Color.rgb * Material_Diffuse;
     float alpha = input.Color.a * Material_Opacity;
-    if (!AlphaIsEmissive)
+    
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
+    color *= texColor.rgb;
+    if (AlphaIsEmissive == 0.0)
     {
         alpha *= texColor.a;
     }
-    
-    float3 color = input.Color.rgb * Material_Diffuse;
-    color *= texColor.rgb;
     
     return float4(color, alpha);
 }

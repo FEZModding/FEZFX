@@ -23,7 +23,7 @@ struct VS_OUTPUT
     float4 Position : POSITION0;
     float2 TexCoord : TEXCOORD0;
     float3 Normal : TEXCOORD1;
-    float FogFactor : TEXCOORD2;
+    float Fog : TEXCOORD2;
 };
 
 VS_OUTPUT VS(VS_INPUT input)
@@ -37,7 +37,7 @@ VS_OUTPUT VS(VS_INPUT input)
     
     output.TexCoord = TransformTexCoord(input.TexCoord);
     output.Normal = TransformNormalToWorld(input.Normal);
-    output.FogFactor = (IgnoreFog) ? 0.0 : saturate(ApplyFog(worldViewPos.w, Fog_Density));
+    output.Fog = (IgnoreFog != 0.0) ? 0.0 : saturate(1.0 - ApplyFog(output.Position.w));
 
     return output;
 }
@@ -45,55 +45,47 @@ VS_OUTPUT VS(VS_INPUT input)
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(AnimatedTexture, input.TexCoord);
-    
-    float alpha = texColor.a * Material_Opacity;
-    if (AlphaIsEmissive)
-    {
-        ApplyAlphaTest(alpha);
-    }
 
-    float brightness = texColor.a;
-    if (!AlphaIsEmissive)
+    float emissive = Fullbright;
+    if (AlphaIsEmissive != 0.0)
     {
-        brightness = Fullbright;
+        emissive = texColor.a;
     }
     if (IgnoreShading)
     {
-        brightness = 1.0;
+        emissive = 1.0;
     }
-    float3 litColor = CalculateLighting(input.Normal, brightness);
 
-    float3 color = lerp(litColor, 1.0, input.FogFactor);
-    if (SewerHax)
+    float alpha = Material_Opacity;
+    if (AlphaIsEmissive == 0.0)
     {
-        color = (texColor.r < 0.75) ? 0.0 : 1.0;
+        alpha *= texColor.a;
+        ApplyAlphaTest(alpha);
     }
-    color *= 0.5;
 
-    if (AlphaIsEmissive)
+    float3 light = ComputeLight(input.Normal, emissive);
+    float3 color = lerp(light, 1.0, input.Fog);
+    if (SewerHax != 0.0 && AlphaIsEmissive == 0.0)
     {
-        alpha = Material_Opacity;
+        color = texColor.r > 0.75 ? 1.0 : 0.0;
     }
 
-    return float4(color, alpha);
+    return float4(color * 0.5, alpha);
 }
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(AnimatedTexture, input.TexCoord);
-    float alpha = texColor.a * Material_Opacity;
-    if (AlphaIsEmissive)
+    
+    float alpha = Material_Opacity;
+    if (AlphaIsEmissive == 0.0)
     {
+        alpha *= texColor.a;
         ApplyAlphaTest(alpha);
     }
 
     float3 color = texColor.rgb * Material_Diffuse;
-    color = lerp(color, Fog_Color, input.FogFactor);
-    
-    if (AlphaIsEmissive)
-    {
-        alpha = Material_Opacity;
-    }
+    color = lerp(color, Fog_Color, input.Fog);
 
     return float4(color, alpha);
 }

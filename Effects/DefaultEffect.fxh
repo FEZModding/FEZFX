@@ -3,6 +3,7 @@
 
 #include "BaseEffect.fxh"
 
+static const float3 DEFAULT = 0.5;
 static const float3 LUMINANCE = 1.0 / 3.0;
 
 float AlphaIsEmissive;  // boolean
@@ -14,14 +15,14 @@ float SpecularEnabled;  // boolean
 
 DECLARE_TEXTURE(BaseTexture);
 
-float3 ApplyLitShading(float3 normal, float brightness, float3 diffuse)
+float3 ComputeLightWithSpecular(float3 normal, float emissive, float3 color)
 {
-    float3 litColor = CalculateLighting(normal, brightness);
-    float3 color = litColor * diffuse;
-
-    if (SpecularEnabled)
+    color *= ComputeLight(normal, emissive);
+    if (SpecularEnabled != 0.0)
     {
-        color += ApplySpecular(normal);
+        float3 eyeDir = Eye - float3(0.0, 0.25, 0.0);
+        float specular = dot(eyeDir, normal);
+        color += saturate(pow(specular, 8)) * 0.5;
     }
 
     return color;
@@ -29,57 +30,44 @@ float3 ApplyLitShading(float3 normal, float brightness, float3 diffuse)
 
 float4 CalculatePrePassTextured(float4 texColor)
 {
-    float brightness;
-    if (Fullbright)
+    float emissive = Emissive;
+    if (Fullbright != 0.0)
     {
-        brightness = texColor.a;
+        emissive = 1.0;
     }
-    else if (AlphaIsEmissive)
+    else if (TextureEnabled != 0.0)
     {
-        brightness = Emissive;
+        if (AlphaIsEmissive != 0.0)
+        {
+            emissive = texColor.a;
+        }
+        else
+        {
+            emissive = dot(texColor.rgb, LUMINANCE);
+        }
+    }
+
+    if (AlphaIsEmissive != 0.0)
+    {
+        return float4(emissive * Material_Diffuse * 0.5, 1.0);
     }
     else
     {
-        brightness = dot(texColor.rgb, LUMINANCE);
+        return float4(DEFAULT, emissive * Material_Opacity);
     }
-    
-    if (!TextureEnabled)
-    {
-        brightness = 1.0;
-    }
-
-    float4 color;
-    if (Fullbright)
-    {
-        color.rgb = brightness * Material_Diffuse * 0.5;
-        color.a = brightness * Material_Opacity;
-    }
-    else
-    {
-        color.rgb = 0.5;
-        color.a = 1.0;
-    }
-
-    return color;
 }
 
 float4 CalculatePrePassVertexColored()
 {
-    float brightness = (Fullbright) ? 1.0 : Emissive;
-
-    float4 color;
-    if (AlphaIsEmissive)
+    float emissive = (Fullbright != 0.0) ? 1.0 : Emissive;
+    if (AlphaIsEmissive != 0.0)
     {
-        color.rgb = brightness * Material_Diffuse * 0.5;
-        color.a = brightness * Material_Opacity;
+        return float4(emissive * Material_Diffuse * 0.5, 1.0);
     }
     else
     {
-        color.rgb = 0.5;
-        color.a = 1.0;
+        return float4(DEFAULT, emissive * Material_Opacity);
     }
-
-    return color;
 }
 
 #endif // DEFAULT_EFFECT_FXH

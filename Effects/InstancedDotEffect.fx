@@ -3,10 +3,10 @@
 
 #include "BaseEffect.fxh"
 
-static const float3x3 ISOMETRIC_MATRIX = float3x3(
-    1.0 / sqrt(2.0),    0,                  1.0 / sqrt(2.0),
-    1.0 / sqrt(3.0),    1.0 / sqrt(3.0),    -1.0 / sqrt(3.0),
-    -1.0 / sqrt(6.0),   2.0 / sqrt(6.0),    1.0 / sqrt(6.0)
+static const float3x3 TILT_MATRIX = float3x3(
+    1.0 / sqrt(2.0),    1.0 / sqrt(3.0),    -1.0 / sqrt(6.0),
+    0.0,                1.0 / sqrt(3.0),    2.0 / sqrt(6.0),
+    1.0 / sqrt(2.0),    -1.0 / sqrt(3.0),   1.0 / sqrt(6.0)
 );
 
 float4 InstanceData[225];
@@ -28,44 +28,61 @@ struct VS_OUTPUT
     float4 Position : POSITION0;
 };
 
-VS_OUTPUT VS_Main(VS_INPUT input)
+float3 RotateAndProject(float4 position, float randomSeed)
+{
+    float s, c;
+    sincos(Theta + randomSeed, s, c);
+    float4x4 rotation = float4x4(
+        c, 0, 0, s,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        -s, 0, 0, c
+    );
+
+    float4 transformed = mul(rotation, position);
+    float wFactor = ((transformed.w + 1.0) / 3.0 + 0.5) * (1.0 / 3.0);
+    float3 projected = transformed.xyz * wFactor;
+
+    return projected;
+}
+
+VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
+    float4 data = InstanceData[(int)input.InstanceIndex];
 
-    int index = trunc(input.InstanceIndex);
-    float3 Offset = InstanceData[index].xyz;
-    float Rotation = InstanceData[index].w;
+    // Color shift!
+    float3 hsvColor = input.Color.rgb;
+    hsvColor[0] += Theta / 10.0 + data.w;
+    float3 color = HSV_RGB(hsvColor[0], hsvColor[1], hsvColor[2]) * 0.35;
 
-    float s, c;
-    sincos(Theta + Rotation, s, c);
-    
-    float rotatedX = input.Position.x * c - input.Position.w * s;
-    float rotatedW = input.Position.x * s + input.Position.w * c;
-    float scale = ((rotatedW + 1.0) / 3.0 + 0.5) / 3.0;
-    float3 scaledPos = scale * float3(rotatedX, input.Position.yz);
+    // 4D rotate & project!
+    float4 projectedPosition = float4(RotateAndProject(input.Position, data.w), 1.0);
 
-    float distanceOsc = sin(EightShapeStep * (4.0 / 3.0) + Rotation) * 0.2 + 1.0;
-    scaledPos *= ImmobilityFactor * (distanceOsc * DistanceFactor - 1.0) + 1.0;
-    
-    float4 worldPos = float4(mul(scaledPos, ISOMETRIC_MATRIX) + Offset, 1.0);
-    sincos(EightShapeStep + Rotation, s, c);
-    worldPos.xy += float2(c, s) * ImmobilityFactor;
+    // Scale!
+    float s = 1.0 + sin(EightShapeStep * 4.0 / 3.0 + data.w) * 0.2;
+    float3 scale = lerp(1.0, s * DistanceFactor, ImmobilityFactor);
+    projectedPosition.xyz *= scale;
 
-    float4 worldViewPos = TransformPositionToClip(worldPos);
+    // Tilt!
+    projectedPosition.xyz = mul(TILT_MATRIX, projectedPosition.xyz);
+
+    // Offset!
+    projectedPosition.xyz += data.xyz;
+
+    // Move around!
+    float c;
+    sincos(EightShapeStep + data.w, s, c);
+    projectedPosition.xy += float2(c, s) * ImmobilityFactor;
+
+    float4 worldViewPos = TransformPositionToClip(projectedPosition);
     output.Position = ApplyTexelOffset(worldViewPos);
-
-    float hue = frac(Theta * 0.1 + Rotation + input.Color.x);
-    float saturation = input.Color.y;
-    float value = input.Color.z;
-    
-    float3 color = HSV_RGB(hue, saturation, value);
-    output.Color.rgb = color * Material_Diffuse * 0.35;
-    output.Color.a = Material_Opacity;
+    output.Color = float4(color * Material_Diffuse, Material_Opacity);
 
     return output;
 }
 
-float4 PS_Main(VS_OUTPUT input) : COLOR0
+float4 PS(VS_OUTPUT input) : COLOR0
 {
     return input.Color;
 }
@@ -74,7 +91,7 @@ technique TSM2
 {
     pass Main
     {
-        VertexShader = compile vs_2_0 VS_Main();
-        PixelShader = compile ps_2_0 PS_Main();
+        VertexShader = compile vs_2_0 VS();
+        PixelShader = compile ps_2_0 PS();
     }
 }

@@ -34,35 +34,25 @@ VS_OUTPUT VS(VS_INPUT input)
 float4 PS_Standard(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-    float3 color = 1.0 - (texColor.rrr * Material_Opacity);
-    
-    return float4(color, 1.0);
+    float3 shadow = texColor.rrr * Material_Opacity;
+    return float4(1.0 - shadow, 1.0);
 }
 
 float4 PS_Canopy(VS_OUTPUT input) : COLOR0
 {
+    float3 mult2xAmbient = BaseAmbient / 2.0;
+    float3 mult2xDirect = DiffuseLight / 2.0;
+
+    // FIXME: Hacked from -Eye because of preshader/saturate bug
+    float3 shading = PerAxisShading(input.Normal, 0.0);
+    // This fails sometimes because eye normal != world normal
+    float3 faceShading = lerp(shading, 1.0, 0.75) * mult2xDirect;
+
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-    
-    float3 invAmbient = 1.0 - BaseAmbient;
-    float3 ambient = saturate(BaseAmbient);
-    float ndotl = saturate(dot(input.Normal, 1.0));
-    float3 lighting = ndotl * invAmbient + ambient;
-    
-    // Back lighting for surfaces facing away
-    if (input.Normal.z < -0.01)
-        lighting = abs(input.Normal.z) * invAmbient * 0.6 + lighting;
-    
-    // Side lighting for surfaces facing left
-    if (input.Normal.x < -0.01)
-        lighting = abs(input.Normal.x) * invAmbient * 0.3 + lighting;
-    
-    float3 canopyColor = lerp(saturate(lighting), 1.0, 0.75);
-    float3 lightingDelta = canopyColor * (DiffuseLight * 0.5) - (BaseAmbient * 0.5);
-    
-    float shadowAttenuation = 1.0 - texColor.r * Material_Opacity;
-    float3 color = lightingDelta * shadowAttenuation + (BaseAmbient * 0.5);
-    
-    return float4(color, 1.0);
+    float shadow = texColor.r * Material_Opacity;
+    float3 color = mult2xAmbient + (faceShading - mult2xAmbient) * (1.0 - shadow);
+
+	return float4(color, 1.0);
 }
 
 technique TSM2

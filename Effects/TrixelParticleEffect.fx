@@ -3,6 +3,10 @@
 
 #include "BaseEffect.fxh"   // NOTE: BaseAmbient was float1 type
 
+// Row 1 : Position (xyz), Unused (w)
+// Row 2 : Scale (xyz), Unused (w)
+// Row 3 : Color with alpha (xyzw)
+// Row 4 : Texture matrix { m11, m22, m31, m32 } (xyzw)
 float4x4 InstanceData[60];
 
 DECLARE_TEXTURE(BaseTexture);
@@ -26,45 +30,39 @@ struct VS_OUTPUT
 VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
+    float4x4 data = InstanceData[int(input.InstanceIndex)];
 
-    int index = trunc(input.InstanceIndex);
-    float3 Center = InstanceData[index][0].xyz;
-    float3 Size = InstanceData[index][1].xyz;
-    float4 Color = InstanceData[index][2];
-    float4 TextureMatrix = InstanceData[index][3];
-
-    output.TexCoord = input.TexCoord * TextureMatrix.xy + TextureMatrix.zw;
+    output.Color = data[2];
+    output.Normal = input.Normal;
+    output.TexCoord = input.TexCoord * data[3].xy + data[3].zw;
     
-    float4x4 xform = CreateTransform(Center, Size);
+    float4x4 xform = CreateTransform(data[0].xyz, data[1].xyz);
     float4 position = mul(input.Position, xform);
     position = ApplyEyeParallax(position);
 
     float4 worldViewPos = TransformPositionToClip(position); 
     output.Position = ApplyTexelOffset(worldViewPos);
 
-    output.Color = Color;
-    output.Normal = input.Normal;
-
     return output;
 }
 
 float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
-    float tint = saturate(input.Color.rgb - 1.0);
-    float3 color = CalculateLighting(input.Normal, tint.x);
-
+    float3 emissive = saturate(input.Color.rgb - 1.0);
+    float3 shade = PerAxisShading(input.Normal, emissive.x);
+    
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-    float alpha = (1.0 - texColor.a) * input.Color.a;
+    float3 color = DiffuseLight * 0.5 * shade + (1.0 - DiffuseLight) * emissive;
+    float alpha = input.Color.a * (1.0 - texColor.a);
 
-    return float4(color * 0.5, alpha);
+    return float4(color, alpha);
 }
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-
     float3 color = texColor.rgb * input.Color.rgb;
-    float alpha = (1.0 - texColor.a) * input.Color.a;
+    float alpha =  input.Color.a * (1.0 - texColor.a);
 
     return float4(color, alpha);
 }

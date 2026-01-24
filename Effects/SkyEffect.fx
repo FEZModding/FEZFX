@@ -3,7 +3,7 @@
 
 #include "BaseEffect.fxh"
 
-static const float DISTANCE_THRESHOLD = 1.0 / 84.0;
+static const float DISTANCE_THRESHOLD = 84.0;
 
 float3 CenterPosition;
 
@@ -19,7 +19,7 @@ struct VS_OUTPUT
 {
     float4 Position : POSITION0;
     float2 TexCoord : TEXCOORD0;
-    float FadeFactor : TEXCOORD1;
+    float DistanceToCamera : TEXCOORD1;
 };
 
 VS_OUTPUT VS(VS_INPUT input)
@@ -31,18 +31,16 @@ VS_OUTPUT VS(VS_INPUT input)
     output.TexCoord = TransformTexCoord(input.TexCoord);
 
     float4 worldPos = TransformPositionToWorld(input.Position);
-    float distanceFromCenter = abs(worldPos.y - CenterPosition.y);
-    output.FadeFactor = 1.0 - min(pow(distanceFromCenter * DISTANCE_THRESHOLD, 2.0), 1.0);
+    output.DistanceToCamera = 1.0 - saturate(pow(abs(worldPos.y - CenterPosition.y) / DISTANCE_THRESHOLD, 2.0));
 
     return output;
 }
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float4 color = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-    color.r = color.a * Material_Opacity;
-    color = color.rrrr * input.FadeFactor;
-    return color;
+    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
+    float alpha = texColor.a * Material_Opacity * input.DistanceToCamera;
+    return alpha;
 }
 
 technique TSM2

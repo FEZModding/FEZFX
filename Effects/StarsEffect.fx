@@ -15,7 +15,7 @@ struct VS_OUTPUT
 {
     float4 Position : POSITION0;
     float2 TexCoord : TEXCOORD0;
-    float Brightness : TEXCOORD1;
+    float AlphaFactor : TEXCOORD1;
 };
 
 VS_OUTPUT VS(VS_INPUT input)
@@ -25,7 +25,7 @@ VS_OUTPUT VS(VS_INPUT input)
     float4 worldViewPos = TransformPositionToClip(input.Position);
     output.Position = ApplyTexelOffset(worldViewPos);
     output.TexCoord = TransformTexCoord(input.TexCoord);
-    output.Brightness = (input.Position.y + 0.05) * 16.0;
+    output.AlphaFactor = (input.Position.y + 0.05) * 16.0;
 
     return output;
 }
@@ -33,7 +33,7 @@ VS_OUTPUT VS(VS_INPUT input)
 float4 PS(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-    float3 color = texColor.rgb * Material_Opacity * input.Brightness;
+    float3 color = texColor.rgb * Material_Opacity * input.AlphaFactor;
     return float4(color, 1.0);
 }
 

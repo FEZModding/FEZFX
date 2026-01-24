@@ -4,6 +4,7 @@
 #include "BaseEffect.fxh"
 
 static const float SCANLINE_FREQ = 300.0 * PI;
+static const float3 COLOR_OFFSETS = float3(0.0, 1.0, 2.0);
 
 DECLARE_TEXTURE(BaseTexture);
 
@@ -33,23 +34,18 @@ float4 PS(VS_OUTPUT input) : COLOR0
 {
     // Barrel distortion
     float2 offset = input.TexCoord - 0.5;
-    float distSq = dot(offset, offset);
     float2 bulged = offset * 2.0 + 0.5;
-    float distortion = pow(abs(distSq), 1.5);
+    float vignette = pow(abs(dot(offset, offset)), 1.5);
 
     // Sample texture
-    float2 texCoord = lerp(input.TexCoord, bulged, distortion);
+    float2 texCoord = TransformTexCoord(lerp(input.TexCoord, bulged, vignette));
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, texCoord);
 
     // Scanline phase with RGB offset
-    float scanlinePhase = texCoord.y * SCANLINE_FREQ + Time * 2.0;
-    float3 phases = scanlinePhase + float3(0.0, 1.0, 2.0);
+    float3 scanline = sin(texCoord.y * SCANLINE_FREQ + Time * 2.0 + COLOR_OFFSETS);
+    scanline = scanline * 0.5 + 0.8;
 
-    // Apply scanline modulation
-    float3 scanline = cos(phases) * 0.5 + 0.8;
-    float3 color = texColor.rgb * scanline;
-
-    return float4(color, Material_Opacity);
+    return float4(scanline * texColor.rgb, Material_Opacity);
 }
 
 technique TSM2

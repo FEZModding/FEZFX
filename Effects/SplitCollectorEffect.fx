@@ -9,50 +9,49 @@ float Offset;
 struct VS_INPUT
 {
     float4 Position : POSITION0;
-    float4 TexCoord : TEXCOORD0;
+    float4 Color : COLOR0;
 };
 
 struct VS_OUTPUT
 {
     float4 Position : POSITION0;
-    float4 TexCoord : TEXCOORD0;
+    float4 CloneSign : TEXCOORD0;
 };
 
 VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
+    float3 cloneSign = input.Color.rgb * 2.0 - 1.0;
     float4 worldPos = TransformPositionToWorld(input.Position);
-    worldPos.xyz += Offset * (input.TexCoord.xyz * 2.0 - 1.0);
+    worldPos.xyz += Offset * cloneSign;
 
     float4 worldViewPos = TransformWorldToClip(worldPos);
     output.Position = ApplyTexelOffset(worldViewPos);
-    output.TexCoord = input.TexCoord * float4(2, 2, 2, 1) + float4(-1, -1, -1, 0);
+    output.CloneSign = float4(cloneSign, input.Color.a);
 
     return output;
 }
 
 float4 PS(VS_OUTPUT input) : COLOR0
 {
-    float opacity;
-    if (input.TexCoord.w < 0.25)
+    float3 color = Material_Diffuse;
+    float alpha = Material_Opacity;
+
+    if (input.CloneSign.a < 0.25)
     {
-        opacity = saturate(0.125 * Material_Opacity * VaryingOpacity);
+        alpha = saturate(alpha * VaryingOpacity);
     }
-    else if (input.TexCoord.w < 0.5)
+    else if (input.CloneSign.a < 0.5)
     {
-        opacity = saturate(Material_Opacity * VaryingOpacity);
+        alpha = saturate(alpha * 0.125 * VaryingOpacity);
     }
-    else if (input.TexCoord.w < 0.75)
+    else if (input.CloneSign.a < 0.75)
     {
-        opacity = saturate(0.125 * Material_Opacity);
-    }
-    else
-    {
-        opacity = Material_Opacity;
+        alpha = saturate(alpha * 0.125);
     }
 
-    return float4(Material_Diffuse, opacity);
+    return float4(color, alpha);
 }
 
 technique TSM2

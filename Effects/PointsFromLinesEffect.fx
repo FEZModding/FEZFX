@@ -18,9 +18,11 @@ struct VS_OUTPUT
 VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
-
+    
+    // Center position is transformed
     output.Position = TransformPositionToClip(input.Position);
-    output.Position.x -= sign(input.Color.a) * TexelOffset.x * 4.0;
+    // Actual plane vertex offset is added in screen-space
+    output.Position.xy += sign(input.Color.a) * float2(-TexelOffset.x * 4.0, 0.0);
     output.Color = float4(input.Color.rgb, Material_Opacity);
 
     return output;

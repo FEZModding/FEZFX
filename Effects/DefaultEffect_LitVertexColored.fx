@@ -31,10 +31,11 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
+    float3 color = input.Color.rgb * Material_Diffuse;
     float alpha = input.Color.a * Material_Opacity;
-    float3 diffuse = input.Color.rgb * Material_Diffuse;
-    float brightness = (Fullbright) ? 1.0 : Emissive;
-    float3 color = ApplyLitShading(input.Normal, brightness, diffuse);
+    
+    float emissive = (Fullbright != 0.0) ? 1.0 : Emissive;
+    color = ComputeLightWithSpecular(input.Normal, emissive, color);
 
     return float4(color, alpha);
 }

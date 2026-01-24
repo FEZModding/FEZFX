@@ -28,20 +28,20 @@ VS_OUTPUT VS(VS_INPUT input)
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-
-    float alpha = Material_Opacity;
-    if (TextureEnabled && !AlphaIsEmissive)
-    {
-        alpha *= texColor.a;
-    }
-    ApplyAlphaTest(alpha);
-
     float3 color = Material_Diffuse;
-    if (TextureEnabled)
+    float alpha = Material_Opacity;
+
+    if (TextureEnabled != 0.0)
     {
+        float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
         color *= texColor.rgb;
+        if (AlphaIsEmissive == 0.0)
+        {
+            alpha *= texColor.a;
+        }
     }
+    
+    ApplyAlphaTest(alpha);
     
     return float4(color, alpha);
 }

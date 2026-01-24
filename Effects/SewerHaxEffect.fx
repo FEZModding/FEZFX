@@ -34,10 +34,7 @@ float4 PS(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
 
-    float3 color = (texColor.r * texColor.r <= 0.0)
-        ? DARK_COLOR
-        : LIGHT_COLOR;
-
+    float3 color = (texColor.r == 0.0) ? DARK_COLOR : LIGHT_COLOR;
     return float4(color, 1.0);
 }
 

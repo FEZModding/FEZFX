@@ -31,7 +31,9 @@ float4 PS(VS_OUTPUT input) : COLOR0
     float3 color = input.Color.rgb * Material_Diffuse;
     float alpha = input.Color.a * Material_Opacity;
     clip(alpha - 0.01);
-    return float4(color, alpha);
+    
+    // Alpha is intended to be multipled twice by opacity
+    return float4(color, alpha * Material_Opacity);
 }
 
 technique TSM2

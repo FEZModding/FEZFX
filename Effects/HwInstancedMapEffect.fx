@@ -12,10 +12,10 @@ struct VS_INPUT
 {
     float4 Position : POSITION0;
     float2 TexCoord : TEXCOORD0;
-    float3 InstanceTranslation : TEXCOORD2;
-    float4 InstanceColor : TEXCOORD3;
-    float3 InstanceScale : TEXCOORD4;
-    float4 InstanceTexture : TEXCOORD5;
+    float3 InstanceData0 : TEXCOORD2;   // Row 1 : Position (xyz), Unused (w)
+    float4 InstanceData1 : TEXCOORD3;   // Row 2 : Color (xyz), Opacity (w)
+    float3 InstanceData2 : TEXCOORD4;   // Row 3 : Scale (xyz), Unused (w)
+    float4 InstanceData3 : TEXCOORD5;   // Row 4 : TC Offset (xy), TC Scale (zw)
 };
 
 struct VS_OUTPUT
@@ -29,14 +29,16 @@ VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
 
-    float4x4 rotation = (Billboard) ? CameraRotation : MATRIX_IDENTITY;
-    float4x4 xform = CreateTransform(input.InstanceTranslation, (float3x3)rotation, input.InstanceScale);
+    float4x4 rotation = (Billboard != 0.0) ? CameraRotation : MATRIX_IDENTITY;
+    float4x4 xform = CreateTransform(input.InstanceData0, (float3x3)rotation, input.InstanceData2);
     float4 worldPos = mul(input.Position, xform);
 
     float4 worldViewPos = TransformPositionToClip(worldPos);
     output.Position = ApplyTexelOffset(worldViewPos);
-    output.Color = (Billboard) ? 1.0 : input.InstanceColor;
-    output.TexCoord = input.TexCoord * input.InstanceTexture.zw + input.InstanceTexture.xy;
+
+    float3 color = (Billboard != 0.0) ? 1.0 : input.InstanceData1.xyz;
+    output.Color = float4(color, input.InstanceData1.w);
+    output.TexCoord = input.TexCoord * input.InstanceData3.zw + input.InstanceData3.xy;
 
     return output;
 }
@@ -44,9 +46,10 @@ VS_OUTPUT VS(VS_INPUT input)
 float4 PS(VS_OUTPUT input) : COLOR0
 {
     clip(input.Color.a - 0.01);
-
-    float4 color = (Billboard) ? SAMPLE_TEXTURE(BaseTexture, input.TexCoord) : 1.0;
-    return color * input.Color;
+    float4 color = (Billboard != 0.0)
+        ? SAMPLE_TEXTURE(BaseTexture, input.TexCoord)
+        : 1.0;
+    return input.Color * color;
 }
 
 technique TSM2

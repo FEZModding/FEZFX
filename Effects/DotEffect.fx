@@ -24,12 +24,8 @@ VS_OUTPUT VS(VS_INPUT input)
     float4 worldViewPos = TransformPositionToClip(input.Position);
     output.Position = ApplyTexelOffset(worldViewPos);
 
-    float hue = input.Color.x + HueOffset;
-    float saturation = input.Color.y;
-    float value = input.Color.z;
-
-    float3 color = HSV_RGB(hue, saturation, value);
-    output.Color.rgb = color * Material_Diffuse * 0.35;
+    float3 color = HSV_RGB(input.Color[0] + HueOffset, input.Color[1], input.Color[2]) * 0.35;
+    output.Color.rgb = color * Material_Diffuse;
     output.Color.a = Material_Opacity;
     
     return output;

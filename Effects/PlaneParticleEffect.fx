@@ -3,7 +3,12 @@
 
 #include "BaseEffect.fxh"
 
+// Row 1 : Position (xyz), Phi (w)
+// Row 2 : Scale (xyz), Unused (w)
+// Row 3 : Color with alpha (xyzw)
+// Row 4 : Unused
 float4x4 InstanceData[60];
+
 float Fullbright;       // boolean
 float Additive;         // boolean
 
@@ -20,28 +25,23 @@ struct VS_OUTPUT
 {
     float4 Position : POSITION;
     float2 TexCoord : TEXCOORD0;
-    float4 SpawnColor : TEXCOORD1;
+    float4 Color : TEXCOORD1;
 };
 
 VS_OUTPUT VS(VS_INPUT input)
 {
     VS_OUTPUT output;
+    float4x4 data = InstanceData[(int)input.InstanceIndex];
 
-    int index = trunc(input.InstanceIndex);
-    float3 Position = InstanceData[index][0].xyz;
-    float Phi = InstanceData[index][0].w;
-    float3 SizeBirth = InstanceData[index][1].xyz;
-    float4 SpawnColor = InstanceData[index][2];
-
-    float3x3 basis = PhiToMatrix(Phi);
-    float4x4 xform = CreateTransform(Position, basis, SizeBirth);
+    float3x3 basis = PhiToMatrix(data[0].w);
+    float4x4 xform = CreateTransform(data[0].xyz, basis, data[1].xyz);
     float4 worldPos = mul(input.Position, xform);
     worldPos = ApplyEyeParallax(worldPos);
 
     float4 worldViewPos = TransformPositionToClip(worldPos);
     output.Position = ApplyTexelOffset(worldViewPos);
     output.TexCoord = input.TexCoord;
-    output.SpawnColor = SpawnColor;
+    output.Color = data[2];
 
     return output;
 }
@@ -50,30 +50,20 @@ float4 PS_Pre(VS_OUTPUT input) : COLOR0
 {
     float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
 
-    float3 color;
-    float alpha;
-    if (Additive)
-    {
-        color = texColor.rgb * input.SpawnColor.rgb * Fullbright;
-        alpha = 1.0;
-    }
-    else
-    {
-        color = DiffuseLight + (1.0 - DiffuseLight) * Fullbright;
-        alpha = texColor.a * input.SpawnColor.a;
-    }
+    float alpha = (Additive != 0.0)
+        ? dot(input.Color.rgb * texColor.rgb, 1.0 / 3.0)
+        : input.Color.a * texColor.a;
+
+    float3 color = DiffuseLight + Fullbright * (1.0 - DiffuseLight);
 
     return float4(color * 0.5, alpha);
 }
 
 float4 PS_Main(VS_OUTPUT input) : COLOR0
 {
-    float4 texColor = SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
-
-    float4 result = texColor * input.SpawnColor;
-    ApplyAlphaTest(result.a);
-
-    return result;
+    float4 color = input.Color * SAMPLE_TEXTURE(BaseTexture, input.TexCoord);
+    ApplyAlphaTest(color.a);
+    return color;
 }
 
 technique TSM2

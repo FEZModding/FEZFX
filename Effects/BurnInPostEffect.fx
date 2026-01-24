@@ -3,6 +3,8 @@
 
 #include "BaseEffect.fxh"
 
+static const float OLD_FRAME_MIX = 0.75;
+
 float3 AcceptColor;
 
 DECLARE_TEXTURE(NewFrameTexture);
@@ -35,13 +37,14 @@ float4 PS(VS_OUTPUT input) : COLOR0
     float4 newFrame = SAMPLE_TEXTURE(NewFrameTexture, input.TexCoord);
     float4 oldFrame = SAMPLE_TEXTURE(OldFrameTexture, input.TexCoord);
 
-    // Create multiplicative mask and square it for strong falloff
-    float3 colorMatch = 1.0 - abs(newFrame.rgb - AcceptColor);
-    float mask = pow(colorMatch.r * colorMatch.g * colorMatch.b, 2);
+    // Create new frame factor
+    float3 invDiff = 1.0 - abs(AcceptColor - newFrame.rgb);
+    float combine = invDiff.r * invDiff.g * invDiff.b;
+    float newFrameFactor = pow(combine, 2.0) * AcceptColor;
 
-    // Blend: 25% of new matched color + 75% of old frame
-    float3 newContribution = AcceptColor * mask * 0.25;
-    float3 color = oldFrame.rgb * 0.75 + newContribution;
+    // Blend new matched color with old frame color
+    float3 newContribution = newFrameFactor * (1.0 - OLD_FRAME_MIX);
+    float3 color = oldFrame.rgb * OLD_FRAME_MIX + newContribution;
 
     return float4(color, 1.0);
 }
