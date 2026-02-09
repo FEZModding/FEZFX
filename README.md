@@ -22,7 +22,7 @@ See [HOWTO](HOWTO.md) for a description of the reconstruction process.
 Use the `fxc` compiler with the `fx_2_0` profile support:
 
 ```cmd
-fxc /T fx_2_0 FastBlurEffect.fx /Fo FastBlurEffect.fx.fxc
+fxc /T fx_2_0 FastBlurEffect.fx /Fo FastBlurEffect.fxc
 ```
 
 ## Testing
